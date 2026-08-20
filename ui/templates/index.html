@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PV- und Speicher-Projekte Deutschland</title>
+  <style>
+    :root {
+      --bg: #f4f1ea;
+      --ink: #1c1917;
+      --muted: #57534e;
+      --line: #d6d3d1;
+      --card: #fffdf8;
+      --accent: #0f766e;
+      --pv: #0f766e;
+      --storage: #9a3412;
+      --both: #1d4ed8;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Calibri, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+    }
+    header {
+      padding: 28px 32px 16px;
+      border-bottom: 1px solid var(--line);
+      background: var(--card);
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+    h1 { margin: 0 0 6px; font-size: 22px; font-weight: 650; }
+    .meta { color: var(--muted); font-size: 14px; }
+    nav { margin-top: 12px; }
+    nav a { color: var(--accent); margin-right: 16px; }
+    nav a.current { font-weight: 700; text-decoration: none; color: var(--ink); }
+    main { padding: 24px 32px 48px; max-width: 1200px; }
+    .empty { color: var(--muted); }
+    .filters-wrap {
+      margin-top: 16px;
+      padding: 14px 16px 12px;
+      background: #ecfdf5;
+      border: 2px solid var(--accent);
+    }
+    .filters-wrap h2 {
+      margin: 0 0 10px;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+    .filters {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px 16px;
+      background: transparent;
+      border: 0;
+      padding: 0;
+      margin: 0;
+    }
+    article {
+      background: var(--card);
+      border: 1px solid var(--line);
+      padding: 16px 18px 14px;
+      margin-bottom: 12px;
+    }
+    .row-top { display: flex; gap: 10px; flex-wrap: wrap; align-items: baseline; }
+    .tag {
+      font-size: 12px;
+      font-weight: 650;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 2px 8px;
+      border: 1px solid currentColor;
+    }
+    .tag-pv { color: var(--pv); }
+    .tag-speicher { color: var(--storage); }
+    .tag-both { color: var(--both); }
+    .tag-portal { color: var(--muted); text-transform: none; letter-spacing: 0; font-weight: 600; }
+    h2 { font-size: 17px; margin: 8px 0 6px; font-weight: 650; }
+    h2 a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+    h2 a:hover { color: var(--ink); }
+    .facts a { color: var(--accent); }
+    .facts { font-size: 13px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 12px; }
+    .reason, .excerpt { font-size: 14px; margin-top: 10px; line-height: 1.45; }
+    .reason { color: var(--accent); }
+    .filters label,
+    .filters .filter-field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 650;
+    }
+    .filters input:disabled {
+      background: #f5f5f4;
+      color: var(--muted);
+    }
+    .filters input,
+    .filters select {
+      font: inherit;
+      font-weight: 400;
+      color: var(--ink);
+      border: 1px solid var(--line);
+      padding: 6px 8px;
+      background: #fff;
+    }
+    .filter-checks {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 12px;
+      align-items: center;
+      min-height: 32px;
+    }
+    .filter-checks label {
+      flex-direction: row;
+      align-items: center;
+      gap: 6px;
+      font-weight: 400;
+      color: var(--ink);
+      text-transform: none;
+      font-size: 13px;
+    }
+    .filter-checks input { margin: 0; }
+    .filter-note { font-size: 12px; color: var(--muted); margin: 0 0 16px; }
+    .filter-count { font-weight: 650; color: var(--ink); }
+    article.is-hidden { display: none; }
+    .pager {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px 14px;
+      margin: 8px 0 16px;
+      font-size: 14px;
+    }
+    .pager button,
+    .pager select {
+      font: inherit;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      padding: 6px 10px;
+    }
+    .pager button:disabled {
+      color: var(--muted);
+      background: #f5f5f4;
+    }
+    .pager-status { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Photovoltaik und Batteriespeicher — Deutschland + NRW-Portale</h1>
+    <p class="meta">
+      {% if last %}
+        Letzter Lauf: {{ last['run_date'] }}
+        · {{ last['listed'] }} Bekanntmachungen geprüft
+        · {{ last['matched'] }} Treffer
+        {% if last['finished_at'] %}· {{ last['finished_at'] }}{% endif %}
+      {% else %}
+        Noch kein Lauf. Im Ordner: <code>python jobs/daily.py --today</code>
+      {% endif %}
+    </p>
+    <nav>
+      <a href="/" class="{{ 'current' if not show_all else '' }}">Letzter Stichtag</a>
+      <a href="/alle" class="{{ 'current' if show_all else '' }}">Alle gespeicherten Treffer</a>
+    </nav>
+    <div class="filters-wrap">
+      <h2>Filter</h2>
+      <form class="filters" id="filters" autocomplete="off">
+        <div class="filter-field">Art
+          <span class="filter-checks">
+            <label><input type="checkbox" id="f-cat-pv" checked> PV ({{ n_pv }})</label>
+            <label><input type="checkbox" id="f-cat-speicher" checked> Speicher ({{ n_speicher }})</label>
+            <label><input type="checkbox" id="f-cat-both" checked> PV+Speicher ({{ n_both }})</label>
+          </span>
+        </div>
+        <label>Veröffentlicht
+          <span class="filter-pair">
+            {% if pub_min %}
+            <input type="date" id="f-pub-from" min="{{ pub_min }}" max="{{ pub_max }}" value="{{ pub_min }}" data-bound="{{ pub_min }}" title="frühestes Datum">
+            <input type="date" id="f-pub-to" min="{{ pub_min }}" max="{{ pub_max }}" value="{{ pub_max }}" data-bound="{{ pub_max }}" title="spätestes Datum">
+            {% else %}
+            <input type="date" id="f-pub-from" disabled>
+            <input type="date" id="f-pub-to" disabled>
+            {% endif %}
+          </span>
+        </label>
+        <label>Ort
+          <input type="search" id="f-ort" list="ort-list" placeholder="{% if cities %}{{ cities|length }} Orte in den Treffern{% else %}kein Ort hinterlegt{% endif %}">
+          <datalist id="ort-list">
+            {% for city in cities %}
+            <option value="{{ city }}"></option>
+            {% endfor %}
+          </datalist>
+        </label>
+        <label>Fläche m²
+          <span class="filter-pair">
+            {% if area_min %}
+            <input type="number" id="f-area-min" min="{{ area_min }}" max="{{ area_max }}" step="1" value="{{ area_min }}" data-bound="{{ area_min }}" title="kleinste verfügbare Fläche">
+            <input type="number" id="f-area-max" min="{{ area_min }}" max="{{ area_max }}" step="1" value="{{ area_max }}" data-bound="{{ area_max }}" title="größte verfügbare Fläche">
+            {% else %}
+            <input type="number" id="f-area-min" placeholder="keine m²" disabled>
+            <input type="number" id="f-area-max" placeholder="—" disabled>
+            {% endif %}
+          </span>
+        </label>
+        <label>Anlagengröße kWp
+          <span class="filter-pair">
+            {% if kwp_min %}
+            <input type="number" id="f-kwp-min" min="{{ kwp_min }}" max="{{ kwp_max }}" step="0.1" value="{{ kwp_min }}" data-bound="{{ kwp_min }}" title="kleinste verfügbare kWp">
+            <input type="number" id="f-kwp-max" min="{{ kwp_min }}" max="{{ kwp_max }}" step="0.1" value="{{ kwp_max }}" data-bound="{{ kwp_max }}" title="größte verfügbare kWp">
+            {% else %}
+            <input type="number" id="f-kwp-min" placeholder="keine kWp" disabled>
+            <input type="number" id="f-kwp-max" placeholder="—" disabled>
+            {% endif %}
+          </span>
+        </label>
+        <label>Bewerbungsfrist
+          <span class="filter-pair">
+            {% if deadline_min %}
+            <input type="date" id="f-deadline-from" min="{{ deadline_min }}" max="{{ deadline_max }}" value="{{ deadline_min }}" data-bound="{{ deadline_min }}" title="früheste Frist">
+            <input type="date" id="f-deadline-to" min="{{ deadline_min }}" max="{{ deadline_max }}" value="{{ deadline_max }}" data-bound="{{ deadline_max }}" title="späteste Frist">
+            {% else %}
+            <input type="date" id="f-deadline-from" disabled>
+            <input type="date" id="f-deadline-to" disabled>
+            {% endif %}
+          </span>
+        </label>
+        <label>Projektende
+          <span class="filter-pair">
+            {% if end_min %}
+            <input type="date" id="f-end-from" min="{{ end_min }}" max="{{ end_max }}" value="{{ end_min }}" data-bound="{{ end_min }}" title="frühestes Projektende">
+            <input type="date" id="f-end-to" min="{{ end_min }}" max="{{ end_max }}" value="{{ end_max }}" data-bound="{{ end_max }}" title="spätestes Projektende">
+            {% else %}
+            <input type="date" id="f-end-from" disabled title="In diesen Treffern nicht angegeben">
+            <input type="date" id="f-end-to" disabled>
+            {% endif %}
+          </span>
+        </label>
+        <label>Pro Seite
+          <select id="page-size">
+            <option value="5">5</option>
+            <option value="10" selected>10</option>
+            <option value="20">20</option>
+          </select>
+        </label>
+      </form>
+      <p class="filter-note" style="margin: 10px 0 0;">
+        <span class="filter-count" id="filter-count"></span>
+        „Veröffentlicht“ ist das Eintragsdatum im Portal.
+        {% if not end_min %}
+        Projektende ist leer, weil in diesen Treffern kein Fertigstellungs- oder Ausführungsdatum im Bekanntmachungstext steht — oft nur in den Vergabeunterlagen.
+        {% endif %}
+      </p>
+    </div>
+  </header>
+  <main>
+    {% if show_all %}
+      <p class="meta">Alle bisher gespeicherten PV-/Speicher-Treffer.</p>
+    {% elif run_date %}
+      <p class="meta">Nur Bekanntmachungen vom Stichtag {{ run_date }}.</p>
+    {% endif %}
+
+    {% if not rows %}
+      <p class="empty">Keine Treffer. Nach einem Lauf erscheinen sie hier und in <code>data/exports/aktuell.xlsx</code>.</p>
+    {% endif %}
+
+    <nav class="pager" id="pager-top" hidden>
+      <button type="button" data-page-dir="-1">Zurück</button>
+      <span class="pager-status"></span>
+      <button type="button" data-page-dir="1">Weiter</button>
+    </nav>
+
+    {% for row in rows %}
+      <article
+        data-published="{{ row['published_on'] or '' }}"
+        data-ort="{{ (row['city'] or '') }} {{ (row['organisation'] or '') }} {{ (row['nuts'] or '') }} {{ (row['title'] or '') }}"
+        data-area="{{ row['area_m2'] if row['area_m2'] is not none else '' }}"
+        data-kwp="{{ row['capacity_kwp'] if row['capacity_kwp'] is not none else '' }}"
+        data-deadline="{{ row['deadline'] or '' }}"
+        data-end="{{ row['completion_on'] or '' }}"
+        data-category="{{ row['category'] or 'PV' }}"
+      >
+        <div class="row-top">
+          {% if row['category'] == 'PV+Speicher' %}
+            <span class="tag tag-both">PV+Speicher</span>
+          {% elif row['category'] == 'Speicher' %}
+            <span class="tag tag-speicher">Speicher</span>
+          {% else %}
+            <span class="tag tag-pv">PV</span>
+          {% endif %}
+          <span class="tag tag-portal">{{ row['portal'] }}</span>
+          <span class="facts">
+            <span>{{ row['published_on'] }}</span>
+            {% if row['deadline'] %}<span>Bewerbung bis {{ row['deadline'] }}</span>{% endif %}
+            {% if row['completion_on'] %}<span>Projektende {{ row['completion_on'] }}</span>{% endif %}
+            <span>{{ row['notice_type'] }} {{ row['contracting_rule'] }}</span>
+          </span>
+        </div>
+        <h2>
+          {% if row['open_url'] %}
+            <a href="{{ row['open_url'] }}" target="_blank" rel="noopener">{{ row['title'] }}</a>
+          {% else %}
+            {{ row['title'] }}
+          {% endif %}
+        </h2>
+        <div class="facts">
+          <span>{{ row['organisation'] }}</span>
+          {% if row['city'] %}<span>{{ row['city'] }}</span>{% endif %}
+          {% if row['area_m2'] is not none %}<span>{{ row['area_m2'] | round(0) | int }} m²</span>{% endif %}
+          {% if row['capacity_kwp'] is not none %}<span>{{ row['capacity_kwp'] }} kWp</span>{% endif %}
+          {% if row['nuts'] %}<span>{{ row['nuts'] }}</span>{% endif %}
+          {% if row['source_platform'] %}
+            {% if row['open_url'] %}
+              <span>Unterlagen: <a href="{{ row['open_url'] }}" target="_blank" rel="noopener">{{ row['source_platform'] }}</a></span>
+            {% else %}
+              <span>Unterlagen: {{ row['source_platform'] }}</span>
+            {% endif %}
+          {% endif %}
+          {% if row['cpv'] %}<span>{{ row['cpv'] }}</span>{% endif %}
+        </div>
+        {% if row['match_reason'] %}
+          <p class="reason">Treffergrund: {{ row['match_reason'] }}</p>
+        {% endif %}
+        {% if row['excerpt'] %}
+          <p class="excerpt">{{ row['excerpt'] }}</p>
+        {% endif %}
+      </article>
+    {% endfor %}
+
+    <nav class="pager" id="pager-bottom" hidden>
+      <button type="button" data-page-dir="-1">Zurück</button>
+      <span class="pager-status"></span>
+      <button type="button" data-page-dir="1">Weiter</button>
+    </nav>
+  </main>
+  <script>
+    (function () {
+      const form = document.getElementById("filters");
+      if (!form) return;
+      const cards = Array.from(document.querySelectorAll("article"));
+      const countEl = document.getElementById("filter-count");
+      const sizeEl = document.getElementById("page-size");
+      const pagers = [document.getElementById("pager-top"), document.getElementById("pager-bottom")];
+      let page = 1;
+      const val = (id) => (document.getElementById(id).value || "").trim();
+      const num = (id) => {
+        const raw = val(id);
+        return raw === "" ? null : Number(raw);
+      };
+      function inRange(value, min, max) {
+        if (min == null && max == null) return true;
+        if (value === "") return false;
+        const n = Number(value);
+        if (Number.isNaN(n)) return false;
+        if (min != null && n < min) return false;
+        if (max != null && n > max) return false;
+        return true;
+      }
+      function inDateRange(iso, from, to) {
+        if (!from && !to) return true;
+        if (!iso) return false;
+        if (from && iso < from) return false;
+        if (to && iso > to) return false;
+        return true;
+      }
+      function atBound(id) {
+        const el = document.getElementById(id);
+        if (!el || el.disabled) return true;
+        const bound = el.dataset.bound;
+        if (bound == null || bound === "") return val(id) === "";
+        return val(id) === bound;
+      }
+      function pairUntouched(minId, maxId) {
+        return atBound(minId) && atBound(maxId);
+      }
+      function matches(card) {
+        const ort = val("f-ort").toLowerCase();
+        const areaUntouched = pairUntouched("f-area-min", "f-area-max");
+        const kwpUntouched = pairUntouched("f-kwp-min", "f-kwp-max");
+        const pubUntouched = pairUntouched("f-pub-from", "f-pub-to");
+        const deadlineUntouched = pairUntouched("f-deadline-from", "f-deadline-to");
+        const endUntouched = pairUntouched("f-end-from", "f-end-to");
+        const areaMin = areaUntouched ? null : num("f-area-min");
+        const areaMax = areaUntouched ? null : num("f-area-max");
+        const kwpMin = kwpUntouched ? null : num("f-kwp-min");
+        const kwpMax = kwpUntouched ? null : num("f-kwp-max");
+        const pFrom = pubUntouched ? "" : val("f-pub-from");
+        const pTo = pubUntouched ? "" : val("f-pub-to");
+        const dFrom = deadlineUntouched ? "" : val("f-deadline-from");
+        const dTo = deadlineUntouched ? "" : val("f-deadline-to");
+        const eFrom = endUntouched ? "" : val("f-end-from");
+        const eTo = endUntouched ? "" : val("f-end-to");
+        const cats = [];
+        if (document.getElementById("f-cat-pv").checked) cats.push("PV");
+        if (document.getElementById("f-cat-speicher").checked) cats.push("Speicher");
+        if (document.getElementById("f-cat-both").checked) cats.push("PV+Speicher");
+        const okPub = inDateRange(card.dataset.published || "", pFrom, pTo);
+        const okOrt = !ort || (card.dataset.ort || "").toLowerCase().includes(ort);
+        const okArea = inRange(card.dataset.area || "", areaMin, areaMax);
+        const okKwp = inRange(card.dataset.kwp || "", kwpMin, kwpMax);
+        const okDeadline = inDateRange(card.dataset.deadline || "", dFrom, dTo);
+        const okEnd = inDateRange(card.dataset.end || "", eFrom, eTo);
+        const okCat = cats.includes(card.dataset.category || "PV");
+        return okPub && okOrt && okArea && okKwp && okDeadline && okEnd && okCat;
+      }
+      function renderPagers(pageNow, pages, total) {
+        const label = pages <= 1 ? total + " Treffer" : "Seite " + pageNow + " von " + pages;
+        pagers.forEach((nav) => {
+          if (!nav) return;
+          nav.hidden = total === 0 || pages <= 1;
+          nav.querySelector(".pager-status").textContent = label;
+          const prev = nav.querySelector('[data-page-dir="-1"]');
+          const next = nav.querySelector('[data-page-dir="1"]');
+          prev.disabled = pageNow <= 1;
+          next.disabled = pageNow >= pages;
+        });
+      }
+      function apply(resetPage) {
+        if (resetPage) page = 1;
+        const size = Math.max(1, Number(sizeEl && sizeEl.value) || 10);
+        const matched = cards.filter(matches);
+        const pages = Math.max(1, Math.ceil(matched.length / size));
+        if (page > pages) page = pages;
+        const start = (page - 1) * size;
+        const end = start + size;
+        cards.forEach((card) => card.classList.add("is-hidden"));
+        matched.forEach((card, i) => {
+          card.classList.toggle("is-hidden", i < start || i >= end);
+        });
+        countEl.textContent = matched.length + " von " + cards.length + " Treffer";
+        renderPagers(page, pages, matched.length);
+      }
+      form.addEventListener("input", () => apply(true));
+      pagers.forEach((nav) => {
+        if (!nav) return;
+        nav.addEventListener("click", (event) => {
+          const btn = event.target.closest("[data-page-dir]");
+          if (!btn || btn.disabled) return;
+          page += Number(btn.dataset.pageDir);
+          apply(false);
+          const top = document.getElementById("pager-top");
+          if (top) top.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      });
+      apply(true);
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,60 @@
+# Treffer, wenn Photovoltaik ODER Batteriespeicher (oder beides) vorkommt.
+# CPV-Prefixes ohne Prüfziffer; 09331200 trifft auch 09331200-0.
+
+publication_types:
+  - ExAnte          # Beabsichtigte Ausschreibung
+  - Tender          # Ausschreibung
+  # ExPost (vergebener Auftrag) absichtlich nicht
+
+pv:
+  cpv_prefixes:
+    - "09330000"
+    - "09331200"
+    - "09332000"
+    - "45261215"
+  keywords:
+    - photovoltaik
+    - photovoltaic
+    - pv-anlage
+    - pv anlage
+    - dach-pv
+    - dachpv
+    - freiflächen-pv
+    - freiflaechen-pv
+    - bipv
+    - solarmodule
+    - solarmodul
+    - solarzellen
+    - solarzelle
+    - pv-module
+    - pv-modul
+    - kwp
+
+storage:
+  cpv_prefixes:
+    - "09331000"
+  keywords:
+    - batteriespeicher
+    - stromspeicher
+    - solarspeicher
+    - lithiumspeicher
+    - akkuspeicher
+    - solarbatter
+    - batteriesystem
+    - pv-speicher
+    - batteriegroßspeicher
+    - batterie-großspeicher
+    - battery storage
+    - battery energy storage
+    - batteriecontainer
+    - batterie-container
+
+# "Solaranlage" zählt als PV, außer der Text ist klar Solarthermie.
+pv_ambiguous:
+  - solaranlage
+  - solaranlagen
+
+exclude_if_only:
+  - solarthermie
+  - sonnenkollektor
+  - thermische kollektor

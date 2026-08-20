@@ -1,0 +1,12 @@
+.git
+.venv
+venv
+__pycache__
+*.pyc
+data
+*.log
+.DS_Store
+.cursor
+agent-transcripts
+*.md
+!README.md
