@@ -6,154 +6,281 @@
   <title>PV- und Speicher-Projekte Deutschland</title>
   <style>
     :root {
-      --bg: #f4f1ea;
-      --ink: #1c1917;
-      --muted: #57534e;
-      --line: #d6d3d1;
-      --card: #fffdf8;
+      --bg: #eef1f3;
+      --ink: #14201f;
+      --muted: #5b6b6a;
+      --line: #dbe2e1;
+      --card: #ffffff;
       --accent: #0f766e;
+      --accent-dark: #0b5850;
+      --accent-soft: #e6f4f1;
       --pv: #0f766e;
-      --storage: #9a3412;
+      --storage: #b45309;
       --both: #1d4ed8;
+      --pv-soft: #e6f4f1;
+      --storage-soft: #fdf1e3;
+      --both-soft: #e8eefc;
+      --shadow: 0 1px 2px rgba(16, 33, 31, 0.06), 0 4px 16px rgba(16, 33, 31, 0.05);
+      --radius: 12px;
     }
     * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
     body {
       margin: 0;
-      font-family: "Segoe UI", Calibri, sans-serif;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       background: var(--bg);
       color: var(--ink);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
     }
+    a { color: var(--accent); }
     header {
-      padding: 28px 32px 16px;
+      padding: 22px 32px 20px;
       border-bottom: 1px solid var(--line);
-      background: var(--card);
-      position: sticky;
-      top: 0;
-      z-index: 5;
+      background: linear-gradient(180deg, #ffffff 0%, #fbfdfc 100%);
+      box-shadow: 0 1px 0 rgba(16, 33, 31, 0.04);
     }
-    h1 { margin: 0 0 6px; font-size: 22px; font-weight: 650; }
-    .meta { color: var(--muted); font-size: 14px; }
-    nav { margin-top: 12px; }
-    nav a { color: var(--accent); margin-right: 16px; }
-    nav a.current { font-weight: 700; text-decoration: none; color: var(--ink); }
-    main { padding: 24px 32px 48px; max-width: 1200px; }
-    .empty { color: var(--muted); }
-    .filters-wrap {
+    .header-inner { max-width: 1160px; margin: 0 auto; }
+    h1 {
+      margin: 0 0 6px;
+      font-size: 21px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    h1::before {
+      content: "";
+      width: 10px; height: 22px;
+      border-radius: 3px;
+      background: linear-gradient(180deg, #22c55e, var(--accent));
+      flex: none;
+    }
+    .meta { color: var(--muted); font-size: 13.5px; }
+    nav {
       margin-top: 16px;
-      padding: 14px 16px 12px;
-      background: #ecfdf5;
-      border: 2px solid var(--accent);
+      display: inline-flex;
+      gap: 4px;
+      background: #eef2f1;
+      padding: 4px;
+      border-radius: 999px;
+    }
+    nav a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 13.5px;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 999px;
+      transition: background .15s, color .15s;
+    }
+    nav a:hover { color: var(--ink); }
+    nav a.current { background: var(--card); color: var(--accent); box-shadow: var(--shadow); }
+    main { padding: 24px 32px 64px; max-width: 1160px; margin: 0 auto; }
+    .empty {
+      color: var(--muted);
+      background: var(--card);
+      border: 1px dashed var(--line);
+      border-radius: var(--radius);
+      padding: 28px;
+      text-align: center;
+    }
+    .filters-wrap {
+      margin-top: 18px;
+      padding: 16px 18px 14px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
     }
     .filters-wrap h2 {
-      margin: 0 0 10px;
-      font-size: 15px;
+      margin: 0 0 14px;
+      font-size: 12px;
       font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
       color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
     .filters {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 12px 16px;
+      gap: 14px 18px;
       background: transparent;
       border: 0;
       padding: 0;
       margin: 0;
     }
+    .filter-pair { display: flex; gap: 6px; }
+    .filter-pair > * { min-width: 0; flex: 1; }
     article {
+      position: relative;
       background: var(--card);
       border: 1px solid var(--line);
-      padding: 16px 18px 14px;
-      margin-bottom: 12px;
+      border-radius: var(--radius);
+      padding: 18px 20px 16px;
+      margin-bottom: 14px;
+      box-shadow: var(--shadow);
+      transition: transform .12s ease, box-shadow .12s ease;
     }
-    .row-top { display: flex; gap: 10px; flex-wrap: wrap; align-items: baseline; }
+    article::before {
+      content: "";
+      position: absolute;
+      left: 0; top: 14px; bottom: 14px;
+      width: 4px;
+      border-radius: 0 4px 4px 0;
+      background: var(--pv);
+    }
+    article[data-category="Speicher"]::before { background: var(--storage); }
+    article[data-category="PV+Speicher"]::before { background: var(--both); }
+    article:hover { transform: translateY(-1px); box-shadow: 0 2px 4px rgba(16,33,31,0.07), 0 10px 28px rgba(16,33,31,0.08); }
+    .row-top { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
     .tag {
-      font-size: 12px;
-      font-weight: 650;
-      letter-spacing: 0.04em;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
       text-transform: uppercase;
-      padding: 2px 8px;
-      border: 1px solid currentColor;
+      padding: 3px 9px;
+      border-radius: 999px;
+      border: 1px solid transparent;
     }
-    .tag-pv { color: var(--pv); }
-    .tag-speicher { color: var(--storage); }
-    .tag-both { color: var(--both); }
-    .tag-portal { color: var(--muted); text-transform: none; letter-spacing: 0; font-weight: 600; }
-    h2 { font-size: 17px; margin: 8px 0 6px; font-weight: 650; }
-    h2 a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
-    h2 a:hover { color: var(--ink); }
+    .tag-pv { color: var(--pv); background: var(--pv-soft); }
+    .tag-speicher { color: var(--storage); background: var(--storage-soft); }
+    .tag-both { color: var(--both); background: var(--both-soft); }
+    .tag-portal {
+      color: var(--muted);
+      background: #f1f4f3;
+      text-transform: none;
+      letter-spacing: 0;
+      font-weight: 600;
+    }
+    h2 { font-size: 16.5px; margin: 12px 0 8px; font-weight: 650; line-height: 1.35; }
+    h2 a { color: var(--ink); text-decoration: none; }
+    h2 a:hover { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
     .facts a { color: var(--accent); }
-    .facts { font-size: 13px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 12px; }
-    .reason, .excerpt { font-size: 14px; margin-top: 10px; line-height: 1.45; }
-    .reason { color: var(--accent); }
+    .facts {
+      font-size: 12.5px;
+      color: var(--muted);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 14px;
+      align-items: center;
+    }
+    .row-top .facts { margin-left: 2px; }
+    .reason, .excerpt { font-size: 13.5px; margin-top: 10px; line-height: 1.5; }
+    .reason {
+      color: var(--accent-dark);
+      background: var(--accent-soft);
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 8px;
+      font-weight: 600;
+    }
+    .excerpt { color: #40504e; }
     .filters label,
     .filters .filter-field {
       display: flex;
       flex-direction: column;
-      gap: 4px;
-      font-size: 12px;
+      gap: 6px;
+      font-size: 11px;
       color: var(--muted);
-      font-weight: 650;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
     }
     .filters input:disabled {
-      background: #f5f5f4;
+      background: #f3f5f5;
       color: var(--muted);
+      cursor: not-allowed;
     }
     .filters input,
     .filters select {
       font: inherit;
       font-weight: 400;
+      font-size: 14px;
+      letter-spacing: normal;
+      text-transform: none;
       color: var(--ink);
       border: 1px solid var(--line);
-      padding: 6px 8px;
+      border-radius: 8px;
+      padding: 8px 10px;
       background: #fff;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .filters input:focus,
+    .filters select:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.15);
     }
     .filter-checks {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px 12px;
+      gap: 8px;
       align-items: center;
-      min-height: 32px;
+      min-height: 34px;
     }
     .filter-checks label {
       flex-direction: row;
       align-items: center;
       gap: 6px;
-      font-weight: 400;
+      font-weight: 500;
       color: var(--ink);
       text-transform: none;
+      letter-spacing: normal;
       font-size: 13px;
+      padding: 5px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      cursor: pointer;
+      user-select: none;
     }
-    .filter-checks input { margin: 0; }
-    .filter-note { font-size: 12px; color: var(--muted); margin: 0 0 16px; }
-    .filter-count { font-weight: 650; color: var(--ink); }
+    .filter-checks input { margin: 0; accent-color: var(--accent); }
+    .filter-note { font-size: 12.5px; color: var(--muted); margin: 14px 0 18px; line-height: 1.5; }
+    .filter-count {
+      font-weight: 700;
+      color: var(--accent-dark);
+      background: var(--accent-soft);
+      padding: 2px 8px;
+      border-radius: 6px;
+      margin-right: 6px;
+    }
     article.is-hidden { display: none; }
     .pager {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
-      gap: 10px 14px;
-      margin: 8px 0 16px;
+      gap: 10px 12px;
+      margin: 10px 0 18px;
       font-size: 14px;
     }
     .pager button,
     .pager select {
       font: inherit;
       border: 1px solid var(--line);
+      border-radius: 8px;
       background: #fff;
       color: var(--ink);
-      padding: 6px 10px;
+      padding: 7px 14px;
+      cursor: pointer;
+      transition: background .15s, border-color .15s;
     }
+    .pager button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
     .pager button:disabled {
       color: var(--muted);
-      background: #f5f5f4;
+      background: #f3f5f5;
+      cursor: not-allowed;
     }
-    .pager-status { color: var(--muted); }
+    .pager-status { color: var(--muted); font-weight: 600; }
     .run-bar {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
       gap: 10px;
-      margin-top: 12px;
+      margin-top: 16px;
     }
     .run-bar button {
       font: inherit;
@@ -161,26 +288,45 @@
       color: #fff;
       background: var(--accent);
       border: 0;
-      padding: 8px 14px;
+      border-radius: 8px;
+      padding: 10px 18px;
       cursor: pointer;
+      box-shadow: var(--shadow);
+      transition: background .15s, transform .1s;
     }
+    .run-bar button:hover:not(:disabled) { background: var(--accent-dark); }
+    .run-bar button:active:not(:disabled) { transform: translateY(1px); }
     .run-bar button:disabled {
-      background: #a8a29e;
+      background: #9fb0ad;
       cursor: not-allowed;
+      box-shadow: none;
     }
     .run-bar input[type="password"] {
       font: inherit;
       border: 1px solid var(--line);
-      padding: 7px 10px;
+      border-radius: 8px;
+      padding: 9px 12px;
       min-width: 220px;
     }
-    .run-msg { font-size: 14px; color: var(--muted); }
-    .run-msg.is-error { color: #9a3412; }
-    .run-hint { font-size: 13px; color: var(--muted); margin: 8px 0 0; }
+    .run-bar input[type="password"]:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.15);
+    }
+    .run-msg { font-size: 13.5px; color: var(--muted); }
+    .run-msg.is-error { color: #b91c1c; font-weight: 600; }
+    .run-hint { font-size: 12.5px; color: var(--muted); margin: 10px 0 0; }
+    @media (max-width: 640px) {
+      header { padding: 18px 18px 16px; }
+      main { padding: 18px 18px 56px; }
+      h1 { font-size: 18px; }
+      article { padding: 16px 16px 14px; }
+    }
   </style>
 </head>
 <body>
   <header>
+    <div class="header-inner">
     <h1>Photovoltaik und Batteriespeicher — Deutschland + NRW-Portale</h1>
     <p class="meta">
       {% if last %}
@@ -294,6 +440,7 @@
         Projektende ist leer, weil in diesen Treffern kein Fertigstellungs- oder Ausführungsdatum im Bekanntmachungstext steht — oft nur in den Vergabeunterlagen.
         {% endif %}
       </p>
+    </div>
     </div>
   </header>
   <main>
