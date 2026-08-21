@@ -5,5 +5,7 @@ venv/
 data/*.db
 data/exports/*.xlsx
 data/exports/*.csv
+data/scrape.lock
+data/scrape_status.json
 *.log
 .DS_Store

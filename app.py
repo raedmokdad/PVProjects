@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import os
 import sys
+import threading
 from pathlib import Path
 
-from flask import Flask, render_template
+from flask import Flask, jsonify, render_template, request
 
 ROOT = Path(__file__).resolve().parent
 if str(ROOT) not in sys.path:
@@ -12,6 +13,14 @@ if str(ROOT) not in sys.path:
 
 from filter.facts import facts_from_row
 from filter.pv_storage import classify
+from jobs.daily import run as run_daily, yesterday
+from jobs.scrape_state import (
+    is_running,
+    read_status,
+    run_needs_setup,
+    secret_configured,
+    secret_ok,
+)
 from portals.click import notice_click_url
 from store.db import Store
 
@@ -104,6 +113,9 @@ def page_context(rows: list[dict], last, run_date=None, show_all: bool = False) 
         "n_pv": cats["PV"],
         "n_speicher": cats["Speicher"],
         "n_both": cats["PV+Speicher"],
+        "run_secret_required": secret_configured(),
+        "run_needs_setup": run_needs_setup(),
+        "scrape": read_status(),
     }
 
 
@@ -122,6 +134,32 @@ def alle():
     last = store.last_run()
     rows = enrich_rows(store.matches_unique())
     return render_template("index.html", **page_context(rows, last, show_all=True))
+
+
+def _scrape_in_background() -> None:
+    try:
+        run_daily(yesterday())
+    except Exception as exc:  # noqa: BLE001 — Status steht in scrape_status.json
+        print(f"Manueller Lauf fehlgeschlagen: {exc}")
+
+
+@app.route("/run/status")
+def run_status():
+    return jsonify(read_status())
+
+
+@app.route("/run", methods=["POST"])
+def start_run():
+    if run_needs_setup():
+        return jsonify(ok=False, error="RUN_SECRET in Railway setzen, sonst kann jeder die Suche starten."), 503
+    payload = request.get_json(silent=True) or {}
+    secret = payload.get("secret") or request.form.get("secret") or request.headers.get("X-Run-Secret")
+    if not secret_ok(secret):
+        return jsonify(ok=False, error="Geheimnis falsch oder fehlt."), 403
+    if is_running():
+        return jsonify(ok=False, error="Ein Lauf läuft bereits.", scrape=read_status()), 409
+    threading.Thread(target=_scrape_in_background, name="pv-scrape", daemon=True).start()
+    return jsonify(ok=True, message="Suche gestartet (Bekanntmachungen von gestern)."), 202
 
 
 def main() -> None:

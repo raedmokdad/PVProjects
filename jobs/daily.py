@@ -13,6 +13,7 @@ if str(ROOT) not in sys.path:
 
 from filter.facts import apply_facts
 from filter.pv_storage import classify, load_filter_config
+from jobs.scrape_state import acquire_lock, iso_now, release_lock, write_status
 from portals import ALIASES, DEFAULT_PORTALS, PORTALS
 from store.db import Store
 from store.export import export_excel
@@ -23,12 +24,16 @@ except Exception:
     TZ = datetime.now().astimezone().tzinfo
 
 
+def yesterday() -> date:
+    return datetime.now(TZ).date() - timedelta(days=1)
+
+
 def target_date(args: argparse.Namespace) -> date:
     if args.date:
         return date.fromisoformat(args.date)
     if args.today:
         return datetime.now(TZ).date()
-    return datetime.now(TZ).date() - timedelta(days=1)
+    return yesterday()
 
 
 def selected_portals(names: list[str] | None) -> list[str]:
@@ -85,25 +90,52 @@ def run_portal(portal, iso: str, cfg: dict, store: Store) -> tuple[int, int, int
 
 def run(day: date, portal_names: list[str] | None = None) -> int:
     iso = day.isoformat()
-    cfg = load_filter_config()
-    store = Store()
-    run_id = store.start_run(iso)
+    if not acquire_lock():
+        print("Ein Lauf läuft bereits.")
+        return 2
+    write_status(
+        state="running",
+        run_date=iso,
+        started_at=iso_now(),
+        finished_at=None,
+        listed=None,
+        matched=None,
+        errors=None,
+        error=None,
+    )
+    try:
+        cfg = load_filter_config()
+        store = Store()
+        run_id = store.start_run(iso)
 
-    listed_total = 0
-    matched_total = 0
-    errors_total = 0
-    for name in selected_portals(portal_names):
-        portal = PORTALS[name]()
-        listed, matched, errors = run_portal(portal, iso, cfg, store)
-        listed_total += listed
-        matched_total += matched
-        errors_total += errors
+        listed_total = 0
+        matched_total = 0
+        errors_total = 0
+        for name in selected_portals(portal_names):
+            portal = PORTALS[name]()
+            listed, matched, errors = run_portal(portal, iso, cfg, store)
+            listed_total += listed
+            matched_total += matched
+            errors_total += errors
 
-    xlsx = export_excel(store, iso)
-    store.finish_run(run_id, listed=listed_total, matched=matched_total, errors=errors_total)
-    print(f"Fertig. {matched_total} PV/Speicher-Treffer. Excel: {xlsx}")
-    print("Liste anzeigen: python app.py")
-    return 0
+        xlsx = export_excel(store, iso)
+        store.finish_run(run_id, listed=listed_total, matched=matched_total, errors=errors_total)
+        write_status(
+            state="done",
+            finished_at=iso_now(),
+            listed=listed_total,
+            matched=matched_total,
+            errors=errors_total,
+            error=None,
+        )
+        print(f"Fertig. {matched_total} PV/Speicher-Treffer. Excel: {xlsx}")
+        print("Liste anzeigen: python app.py")
+        return 0
+    except Exception as exc:  # noqa: BLE001 — Status für den Button, danach weiterreichen
+        write_status(state="error", finished_at=iso_now(), error=str(exc))
+        raise
+    finally:
+        release_lock()
 
 
 def main() -> int:

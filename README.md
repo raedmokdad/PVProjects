@@ -125,6 +125,8 @@ Anzeige:
 
 Browser: http://127.0.0.1:8000
 
+In der Liste: **Jetzt suchen** startet dieselbe Abfrage wie um 00:05 (Bekanntmachungen von **gestern**). Der Lauf dauert oft mehrere Minuten; die Seite lädt danach neu. Ein zweiter Klick während eines Laufs startet nichts extra.
+
 ## Docker und Railway
 
 Lokal mit Docker:
@@ -140,11 +142,12 @@ Auf [Railway](https://railway.app): Repo verbinden, Build nutzt das `Dockerfile`
 
 1. **Volume** anlegen und nach `/data` mounten (sonst ist die SQLite-Datei nach jedem Deploy weg).
 2. Variable `DATA_DIR=/data` setzen (im Image schon Standard).
-3. Zweiten Dienst aus demselben Image als **Cron** anlegen: Startbefehl `daily`, Zeitplan `5 0 * * *` mit Zeitzone **Europe/Berlin** (00:05, Bekanntmachungen von gestern). Railway-Cron ohne Zeitzone ist UTC — dann im Sommer `5 22 * * *`, im Winter `5 23 * * *`.
+3. Variable **`RUN_SECRET`** setzen (beliebiges Passwort). Ohne das ist der Button auf Railway gesperrt — die URL ist öffentlich.
+4. Zweiten Dienst aus demselben Image als **Cron** anlegen: Startbefehl `daily`, Zeitplan `5 0 * * *` mit Zeitzone **Europe/Berlin** (00:05, Bekanntmachungen von gestern). Railway-Cron ohne Zeitzone ist UTC — dann im Sommer `5 22 * * *`, im Winter `5 23 * * *`.
 
 Die Railway-URL der Liste ist ohne Login erreichbar. Nicht öffentlich teilen, wenn die Treffer intern bleiben sollen.
 
-Ohne Volume und ohne Cron-Dienst gibt es nach einem Neustart keine gespeicherten Treffer und keinen automatischen Lauf.
+Ohne Volume bleiben Treffer nach einem Deploy nicht erhalten. Ohne Cron gibt es keinen automatischen Lauf um 00:05 — der Button ersetzt das nicht dauerhaft, er ist zum manuellen Start.
 
 Dateien:
 
