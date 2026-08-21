@@ -14,13 +14,7 @@ if str(ROOT) not in sys.path:
 from filter.facts import facts_from_row
 from filter.pv_storage import classify
 from jobs.daily import run as run_daily, yesterday
-from jobs.scrape_state import (
-    is_running,
-    read_status,
-    run_needs_setup,
-    secret_configured,
-    secret_ok,
-)
+from jobs.scrape_state import is_running, read_status, secret_configured, secret_ok
 from portals.click import notice_click_url
 from store.db import Store
 
@@ -114,7 +108,6 @@ def page_context(rows: list[dict], last, run_date=None, show_all: bool = False) 
         "n_speicher": cats["Speicher"],
         "n_both": cats["PV+Speicher"],
         "run_secret_required": secret_configured(),
-        "run_needs_setup": run_needs_setup(),
         "scrape": read_status(),
     }
 
@@ -150,8 +143,6 @@ def run_status():
 
 @app.route("/run", methods=["POST"])
 def start_run():
-    if run_needs_setup():
-        return jsonify(ok=False, error="RUN_SECRET in Railway setzen, sonst kann jeder die Suche starten."), 503
     payload = request.get_json(silent=True) or {}
     secret = payload.get("secret") or request.form.get("secret") or request.headers.get("X-Run-Secret")
     if not secret_ok(secret):

@@ -91,26 +91,34 @@ def is_running() -> bool:
         return True
 
 
+_FLAG_VALUES = {"true", "false", "1", "0", "yes", "no", "on", "off"}
+
+
 def run_secret() -> str:
-    return (os.environ.get("RUN_SECRET") or "").strip()
+    return (os.environ.get("RUN_SECRET") or os.environ.get("run_secret") or "").strip()
 
 
 def on_railway() -> bool:
     return bool(os.environ.get("RAILWAY_ENVIRONMENT") or os.environ.get("RAILWAY_PROJECT_ID"))
 
 
+def is_real_secret() -> bool:
+    value = run_secret()
+    return bool(value) and value.lower() not in _FLAG_VALUES
+
+
 def secret_configured() -> bool:
-    return bool(run_secret())
+    return is_real_secret()
 
 
 def run_needs_setup() -> bool:
-    return on_railway() and not secret_configured()
+    return False
 
 
 def secret_ok(provided: str | None) -> bool:
     expected = run_secret()
-    if not expected:
-        return not on_railway()
+    if not is_real_secret():
+        return True
     got = (provided or "").strip()
     if len(got) != len(expected):
         return False

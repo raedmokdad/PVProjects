@@ -194,18 +194,12 @@
     </p>
     <div class="run-bar" id="run-bar"
          data-secret-required="{{ '1' if run_secret_required else '0' }}"
-         data-needs-setup="{{ '1' if run_needs_setup else '0' }}"
          data-state="{{ scrape.state or 'idle' }}">
-      {% if run_needs_setup %}
-        <button type="button" disabled>Jetzt suchen</button>
-        <span class="run-msg is-error">In Railway die Variable <code>RUN_SECRET</code> setzen, sonst kann jeder die Suche starten.</span>
-      {% else %}
-        <button type="button" id="run-btn">Jetzt suchen</button>
-        {% if run_secret_required %}
-          <input type="password" id="run-secret" placeholder="Geheimnis (RUN_SECRET)" autocomplete="off">
-        {% endif %}
-        <span class="run-msg" id="run-msg"></span>
+      <button type="button" id="run-btn">Jetzt suchen</button>
+      {% if run_secret_required %}
+        <input type="password" id="run-secret" placeholder="Geheimnis (RUN_SECRET)" autocomplete="off">
       {% endif %}
+      <span class="run-msg" id="run-msg"></span>
     </div>
     <p class="run-hint">Sucht die Bekanntmachungen von gestern — dieselbe Funktion wie der Lauf um 00:05. Dauert oft mehrere Minuten.</p>
     <nav>

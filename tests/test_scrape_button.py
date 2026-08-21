@@ -41,8 +41,14 @@ class ScrapeStateTests(unittest.TestCase):
     def test_secret_on_railway_without_config(self):
         with patch.dict(os.environ, {"RUN_SECRET": "", "RAILWAY_ENVIRONMENT": "production"}, clear=False):
             os.environ["RUN_SECRET"] = ""
-            self.assertTrue(scrape_state.run_needs_setup())
-            self.assertFalse(scrape_state.secret_ok("x"))
+            self.assertFalse(scrape_state.run_needs_setup())
+            self.assertTrue(scrape_state.secret_ok(""))
+            self.assertTrue(scrape_state.secret_ok("x"))
+
+    def test_true_is_not_a_password(self):
+        with patch.dict(os.environ, {"RUN_SECRET": "true", "RAILWAY_ENVIRONMENT": "production"}):
+            self.assertFalse(scrape_state.secret_configured())
+            self.assertTrue(scrape_state.secret_ok(""))
 
     def test_secret_match(self):
         with patch.dict(os.environ, {"RUN_SECRET": "wetenergy", "RAILWAY_ENVIRONMENT": "production"}):
@@ -84,6 +90,28 @@ class AppRunTests(unittest.TestCase):
         res = self.client.get("/run/status")
         self.assertEqual(res.status_code, 200)
         self.assertIn("state", res.get_json())
+
+
+class AppRunOpenTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.env = patch.dict(
+            os.environ,
+            {"DATA_DIR": self.tmp.name, "RUN_SECRET": "true", "RAILWAY_ENVIRONMENT": "production"},
+            clear=False,
+        )
+        self.env.start()
+        self.addCleanup(self.env.stop)
+        import app as app_mod
+
+        self.client = app_mod.app.test_client()
+
+    def test_start_without_password_when_flag(self):
+        with patch("app.threading.Thread") as thread_cls:
+            res = self.client.post("/run", json={})
+            thread_cls.assert_called_once()
+        self.assertEqual(res.status_code, 202)
 
 
 if __name__ == "__main__":
