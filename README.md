@@ -143,11 +143,12 @@ Auf [Railway](https://railway.app): Repo verbinden, Build nutzt das `Dockerfile`
 1. **Volume** anlegen und nach `/data` mounten (sonst ist die SQLite-Datei nach jedem Deploy weg).
 2. Variable `DATA_DIR=/data` setzen (im Image schon Standard).
 3. Optional **`RUN_SECRET`** auf ein echtes Passwort setzen (nicht `true`). Dann erscheint neben dem Button ein Feld, und nur mit diesem Passwort startet die Suche. `true`/`false` schaltet nichts extra.
-4. Zweiten Dienst aus demselben Image als **Cron** anlegen: Startbefehl `daily`, Zeitplan `5 0 * * *` mit Zeitzone **Europe/Berlin** (00:05, Bekanntmachungen von gestern). Railway-Cron ohne Zeitzone ist UTC — dann im Sommer `5 22 * * *`, im Winter `5 23 * * *`.
+
+Der tägliche Lauf um **00:05 Europe/Berlin** läuft im Web-Dienst selbst (interner Scheduler, `ENABLE_SCHEDULER=1` im Image gesetzt). Kein zweiter Cron-Dienst nötig — praktisch, weil ein Railway-Volume ohnehin nur an einen Dienst hängt. Der Web-Dienst muss dafür durchlaufen (Standard).
 
 Die Railway-URL der Liste ist ohne Login erreichbar. Nicht öffentlich teilen, wenn die Treffer intern bleiben sollen.
 
-Ohne Volume bleiben Treffer nach einem Deploy nicht erhalten. Ohne Cron gibt es keinen automatischen Lauf um 00:05 — der Button ersetzt das nicht dauerhaft, er ist zum manuellen Start.
+Ohne Volume bleiben Treffer nach einem Deploy nicht erhalten. Der Button startet denselben Lauf jederzeit von Hand.
 
 Dateien:
 

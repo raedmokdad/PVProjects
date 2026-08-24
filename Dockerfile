@@ -8,6 +8,7 @@ ENV PYTHONUNBUFFERED=1 \
     DATA_DIR=/data \
     HOST=0.0.0.0 \
     PORT=8000 \
+    ENABLE_SCHEDULER=1 \
     TZ=Europe/Berlin
 
 RUN apt-get update \

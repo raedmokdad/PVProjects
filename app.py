@@ -13,6 +13,7 @@ if str(ROOT) not in sys.path:
 
 from filter.facts import facts_from_row
 from filter.pv_storage import classify
+from jobs import scheduler
 from jobs.daily import run as run_daily, yesterday
 from jobs.scrape_state import is_running, read_status, secret_configured, secret_ok
 from portals.click import notice_click_url
@@ -134,6 +135,10 @@ def _scrape_in_background() -> None:
         run_daily(yesterday())
     except Exception as exc:  # noqa: BLE001 — Status steht in scrape_status.json
         print(f"Manueller Lauf fehlgeschlagen: {exc}")
+
+
+if scheduler.enabled():
+    scheduler.start(lambda: run_daily(yesterday()))
 
 
 @app.route("/run/status")
