@@ -141,6 +141,19 @@ class AppRunOpenTests(unittest.TestCase):
         res = self.client.post("/run", json={"date": future})
         self.assertEqual(res.status_code, 400)
 
+    def test_today_allowed(self):
+        import app as app_mod
+        from datetime import timedelta
+
+        today = (app_mod.yesterday() + timedelta(days=1)).isoformat()
+        with patch("app.threading.Thread") as thread_cls:
+            res = self.client.post("/run", json={"date": today})
+            self.assertEqual(res.status_code, 202)
+            self.assertEqual(
+                thread_cls.call_args.kwargs.get("args"),
+                (app_mod.yesterday() + timedelta(days=1),),
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

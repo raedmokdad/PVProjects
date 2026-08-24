@@ -153,8 +153,8 @@ def parse_run_date(raw: str | None) -> tuple[date | None, str]:
     except ValueError:
         return None, "Datum bitte im Format JJJJ-MM-TT angeben."
     today = yesterday() + timedelta(days=1)
-    if chosen >= today:
-        return None, "Datum muss in der Vergangenheit liegen (spätestens gestern)."
+    if chosen > today:
+        return None, "Datum darf nicht in der Zukunft liegen."
     if chosen < today - timedelta(days=MAX_BACKFILL_DAYS):
         return None, f"Datum liegt zu weit zurück (max. {MAX_BACKFILL_DAYS} Tage)."
     return chosen, ""

@@ -409,7 +409,7 @@
       {% endif %}
       <span class="run-msg" id="run-msg"></span>
     </div>
-    <p class="run-hint">Ohne Datum wird <strong>gestern</strong> gesucht (wie der Lauf um 00:05). Für einen bestimmten Tag ein Datum wählen (max. 60 Tage zurück). Dauert oft mehrere Minuten.</p>
+    <p class="run-hint">Ohne Datum wird <strong>gestern</strong> gesucht (wie der Lauf um 00:05). Optional ein Datum wählen — auch <strong>heute</strong> ist möglich (max. 60 Tage zurück). Dauert oft mehrere Minuten.</p>
     <details class="portals">
       <summary>Durchsuchte Portale <span class="portals-count">{{ portals|length }}</span></summary>
       <div class="portal-chips">
@@ -714,6 +714,13 @@
       const secretKey = "pvRunSecret";
       if (secretInput) {
         secretInput.value = sessionStorage.getItem(secretKey) || "";
+      }
+      if (dateInput) {
+        const today = new Date();
+        const y = today.getFullYear();
+        const m = String(today.getMonth() + 1).padStart(2, "0");
+        const d = String(today.getDate()).padStart(2, "0");
+        dateInput.max = y + "-" + m + "-" + d;
       }
       function setMsg(text, isError) {
         msg.textContent = text;
