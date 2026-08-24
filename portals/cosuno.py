@@ -44,9 +44,11 @@ class CosunoPortal:
     base = "https://www.cosuno.com"
     delay_seconds = 1.2
     max_pages = 12
+    # Cosuno-Volltextsuche wie im Beispiel /de/marketplace?query=PV&sortBy=publishDate.
+    # "PV" findet dort auch "Photovoltaik"; Speicher-Begriffe separat.
     search_texts = (
+        "PV",
         "Photovoltaik",
-        "PV-Anlage",
         "Batteriespeicher",
         "Stromspeicher",
         "Solarmodul",
