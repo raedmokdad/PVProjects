@@ -1,4 +1,5 @@
 from portals.aumass import AumassPortal
+from portals.cosuno import CosunoPortal
 from portals.dtvp import DtvpPortal
 from portals.evergabe_nrw import EvergabeNrwPortal
 from portals.evergabe_online import EvergabeOnlinePortal
@@ -42,6 +43,7 @@ PORTALS = {
     "sachsen_anhalt": SachsenAnhaltPortal,
     "thueringen": ThueringenPortal,
     "saarland": SaarlandPortal,
+    "cosuno": CosunoPortal,
 }
 
 DEFAULT_PORTALS = list(PORTALS)
@@ -68,6 +70,7 @@ PORTAL_LABELS = {
     "sachsen_anhalt": "Sachsen-Anhalt",
     "thueringen": "Thüringen",
     "saarland": "Saarland",
+    "cosuno": "Cosuno — privat-gewerblicher Marktplatz",
 }
 
 
@@ -101,4 +104,5 @@ ALIASES = {
     "lsa": "sachsen_anhalt",
     "th": "thueringen",
     "sl": "saarland",
+    "cs": "cosuno",
 }

@@ -4,7 +4,7 @@ Täglich um 00:05 holt das Tool die Bekanntmachungen des **Vortags**, filtert au
 
 Der [Bekanntmachungsservice](https://oeffentlichevergabe.de/) allein reicht nicht: Unterschwellenverfahren stehen oft nur auf Landes- und Kommunalportalen.
 
-**21 öffentliche Portale**, Standard ist alle. Ohne Login, ohne Unterlagen-Download.
+**22 öffentliche Portale**, Standard ist alle. Ohne Login, ohne Unterlagen-Download. Darunter 21 öffentliche Vergabeportale und der privat-gewerbliche Cosuno-Marktplatz (öffentlich einsehbar).
 
 ## Öffentlich vs. Login (DTVP)
 
@@ -44,6 +44,8 @@ Deshalb fehlen bei manchen DTVP-Verfahren Fläche, kWp und Projektende: die steh
 | Thüringen | `thueringen` — [verwaltung.thueringen.de/evergabe](https://verwaltung.thueringen.de/evergabe) (oft dieselben Verfahren wie evergabe-online) |
 
 Dazu bundesweit: `oeffentlichevergabe`, `dtvp`, `evergabe_online`.
+
+Dazu privat-gewerblich: `cosuno` — der [Cosuno-Marktplatz](https://www.cosuno.com/de/marketplace) ist ohne Login öffentlich durchsuchbar und listet Bauausschreibungen (u. a. PV/Speicher), die auf keinem öffentlichen Vergabeportal stehen.
 
 Dasselbe Verfahren kann auf mehreren Portalen stehen (z. B. DTVP + Landesportal, Thüringen + evergabe-online).
 
@@ -88,6 +90,7 @@ Mit einem Firmenkonto für **Hamburg** oder **BayVeBe** kämen die letzten Lande
 | `sachsen_anhalt` | `st`, `lsa` | Sachsen-Anhalt |
 | `thueringen` | `th` | Thüringen |
 | `saarland` | `sl` | Saarland |
+| `cosuno` | `cs` | Cosuno-Marktplatz (privat-gewerblich) |
 
 ## Einmal einrichten
 
