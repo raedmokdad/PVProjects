@@ -316,6 +316,47 @@
     .run-msg { font-size: 13.5px; color: var(--muted); }
     .run-msg.is-error { color: #b91c1c; font-weight: 600; }
     .run-hint { font-size: 12.5px; color: var(--muted); margin: 10px 0 0; }
+    .portals { margin-top: 12px; font-size: 13px; }
+    .portals > summary {
+      cursor: pointer;
+      color: var(--accent-dark);
+      font-weight: 600;
+      list-style: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      width: fit-content;
+    }
+    .portals > summary::-webkit-details-marker { display: none; }
+    .portals > summary::before {
+      content: "▸";
+      font-size: 11px;
+      color: var(--muted);
+      transition: transform .15s;
+    }
+    .portals[open] > summary::before { transform: rotate(90deg); }
+    .portals-count {
+      background: var(--accent-soft);
+      color: var(--accent-dark);
+      font-weight: 700;
+      border-radius: 999px;
+      padding: 1px 9px;
+      font-size: 12px;
+    }
+    .portal-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+    }
+    .portal-chip {
+      background: #f1f4f3;
+      color: var(--muted);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 3px 10px;
+      font-size: 12px;
+    }
     @media (max-width: 640px) {
       header { padding: 18px 18px 16px; }
       main { padding: 18px 18px 56px; }
@@ -348,6 +389,12 @@
       <span class="run-msg" id="run-msg"></span>
     </div>
     <p class="run-hint">Sucht die Bekanntmachungen von gestern — dieselbe Funktion wie der Lauf um 00:05. Dauert oft mehrere Minuten.</p>
+    <details class="portals">
+      <summary>Durchsuchte Portale <span class="portals-count">{{ portals|length }}</span></summary>
+      <div class="portal-chips">
+        {% for p in portals %}<span class="portal-chip">{{ p }}</span>{% endfor %}
+      </div>
+    </details>
     <nav>
       <a href="/" class="{{ 'current' if not show_all else '' }}">Letzter Stichtag</a>
       <a href="/alle" class="{{ 'current' if show_all else '' }}">Alle gespeicherten Treffer</a>

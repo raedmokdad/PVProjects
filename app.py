@@ -16,6 +16,7 @@ from filter.pv_storage import classify
 from jobs import scheduler
 from jobs.daily import run as run_daily, yesterday
 from jobs.scrape_state import is_running, read_status, secret_configured, secret_ok
+from portals import portal_labels
 from portals.click import notice_click_url
 from store.db import Store
 
@@ -110,6 +111,7 @@ def page_context(rows: list[dict], last, run_date=None, show_all: bool = False) 
         "n_both": cats["PV+Speicher"],
         "run_secret_required": secret_configured(),
         "scrape": read_status(),
+        "portals": portal_labels(),
     }
 
 

@@ -46,6 +46,35 @@ PORTALS = {
 
 DEFAULT_PORTALS = list(PORTALS)
 
+PORTAL_LABELS = {
+    "oeffentlichevergabe": "Bund — Bekanntmachungsservice",
+    "dtvp": "DTVP — Kommunen und Stadtwerke",
+    "evergabe_nrw": "NRW — Landesmarktplatz",
+    "vergabe_ruhr": "NRW — Ruhr-Kommunen",
+    "vmp_rheinland": "NRW — Rheinland-Kommunen",
+    "vergabe_westfalen": "NRW — Westfalen-Kommunen",
+    "evergabe_blb": "NRW — BLB",
+    "vergabe_rlp": "Rheinland-Pfalz",
+    "vergabe_brandenburg": "Brandenburg",
+    "evergabe_mv": "Mecklenburg-Vorpommern",
+    "vergabe_niedersachsen": "Niedersachsen",
+    "berlin": "Berlin",
+    "hessen": "Hessen",
+    "landbw": "Baden-Württemberg",
+    "sachsen": "Sachsen",
+    "bremen": "Bremen",
+    "evergabe_online": "Bund — e-Vergabe",
+    "aumass": "Bayern — Kommunen",
+    "sachsen_anhalt": "Sachsen-Anhalt",
+    "thueringen": "Thüringen",
+    "saarland": "Saarland",
+}
+
+
+def portal_labels(keys=None) -> list[str]:
+    keys = keys if keys is not None else DEFAULT_PORTALS
+    return [PORTAL_LABELS.get(key, key) for key in keys]
+
 ALIASES = {
     "nrw": "evergabe_nrw",
     "ov": "oeffentlichevergabe",
