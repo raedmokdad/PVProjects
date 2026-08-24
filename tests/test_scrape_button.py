@@ -113,6 +113,34 @@ class AppRunOpenTests(unittest.TestCase):
             thread_cls.assert_called_once()
         self.assertEqual(res.status_code, 202)
 
+    def test_optional_date_passed_to_worker(self):
+        import app as app_mod
+        from datetime import date
+
+        with patch("app.threading.Thread") as thread_cls:
+            res = self.client.post("/run", json={"date": "2026-08-21"})
+            self.assertEqual(thread_cls.call_args.kwargs.get("args"), (date(2026, 8, 21),))
+        self.assertEqual(res.status_code, 202)
+
+    def test_empty_date_defaults_to_yesterday(self):
+        import app as app_mod
+
+        with patch("app.threading.Thread") as thread_cls:
+            self.client.post("/run", json={})
+            self.assertEqual(thread_cls.call_args.kwargs.get("args"), (app_mod.yesterday(),))
+
+    def test_bad_date_rejected(self):
+        res = self.client.post("/run", json={"date": "21.08.2026"})
+        self.assertEqual(res.status_code, 400)
+
+    def test_future_date_rejected(self):
+        import app as app_mod
+        from datetime import timedelta
+
+        future = (app_mod.yesterday() + timedelta(days=3)).isoformat()
+        res = self.client.post("/run", json={"date": future})
+        self.assertEqual(res.status_code, 400)
+
 
 if __name__ == "__main__":
     unittest.main()

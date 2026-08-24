@@ -313,6 +313,24 @@
       border-color: var(--accent);
       box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.15);
     }
+    .run-date-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .run-bar input[type="date"] {
+      font: inherit;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 10px;
+    }
+    .run-bar input[type="date"]:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.15);
+    }
     .run-msg { font-size: 13.5px; color: var(--muted); }
     .run-msg.is-error { color: #b91c1c; font-weight: 600; }
     .run-hint { font-size: 12.5px; color: var(--muted); margin: 10px 0 0; }
@@ -383,12 +401,15 @@
          data-secret-required="{{ '1' if run_secret_required else '0' }}"
          data-state="{{ scrape.state or 'idle' }}">
       <button type="button" id="run-btn">Jetzt suchen</button>
+      <label class="run-date-label" for="run-date">Stichtag
+        <input type="date" id="run-date" autocomplete="off">
+      </label>
       {% if run_secret_required %}
         <input type="password" id="run-secret" placeholder="Geheimnis (RUN_SECRET)" autocomplete="off">
       {% endif %}
       <span class="run-msg" id="run-msg"></span>
     </div>
-    <p class="run-hint">Sucht die Bekanntmachungen von gestern — dieselbe Funktion wie der Lauf um 00:05. Dauert oft mehrere Minuten.</p>
+    <p class="run-hint">Ohne Datum wird <strong>gestern</strong> gesucht (wie der Lauf um 00:05). Für einen bestimmten Tag ein Datum wählen (max. 60 Tage zurück). Dauert oft mehrere Minuten.</p>
     <details class="portals">
       <summary>Durchsuchte Portale <span class="portals-count">{{ portals|length }}</span></summary>
       <div class="portal-chips">
@@ -687,6 +708,7 @@
       const msg = document.getElementById("run-msg");
       if (!bar || !btn || !msg) return;
       const secretInput = document.getElementById("run-secret");
+      const dateInput = document.getElementById("run-date");
       const needsSecret = bar.dataset.secretRequired === "1";
       let watching = false;
       const secretKey = "pvRunSecret";
@@ -708,7 +730,7 @@
           .then((data) => {
             if (data.state === "running") {
               setBusy(true);
-              setMsg("Portale werden abgefragt (gestern). Bitte warten, oft 5–15 Minuten.");
+              setMsg("Portale werden abgefragt. Bitte warten, oft 5–15 Minuten.");
               setTimeout(poll, 4000);
               return;
             }
@@ -739,12 +761,13 @@
           return;
         }
         if (secretInput) sessionStorage.setItem(secretKey, secret);
+        const runDate = dateInput ? dateInput.value.trim() : "";
         setBusy(true);
-        setMsg("Suche wird gestartet …");
+        setMsg(runDate ? "Suche wird gestartet (" + runDate + ") …" : "Suche wird gestartet …");
         fetch("/run", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ secret: secret }),
+          body: JSON.stringify({ secret: secret, date: runDate }),
         })
           .then(async (r) => {
             const data = await r.json().catch(() => ({}));

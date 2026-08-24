@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import sys
 import threading
+from datetime import date, timedelta
 from pathlib import Path
 
 from flask import Flask, jsonify, render_template, request
@@ -132,15 +133,36 @@ def alle():
     return render_template("index.html", **page_context(rows, last, show_all=True))
 
 
-def _scrape_in_background() -> None:
+MAX_BACKFILL_DAYS = 60
+
+
+def _scrape_in_background(day: date) -> None:
     try:
-        run_daily(yesterday())
+        run_daily(day)
     except Exception as exc:  # noqa: BLE001 — Status steht in scrape_status.json
         print(f"Manueller Lauf fehlgeschlagen: {exc}")
 
 
+def parse_run_date(raw: str | None) -> tuple[date | None, str]:
+    """Optionales Datum aus dem Button. Leer -> gestern. Gibt (Datum, Fehler) zurück."""
+    value = (raw or "").strip()
+    if not value:
+        return yesterday(), ""
+    try:
+        chosen = date.fromisoformat(value)
+    except ValueError:
+        return None, "Datum bitte im Format JJJJ-MM-TT angeben."
+    today = yesterday() + timedelta(days=1)
+    if chosen >= today:
+        return None, "Datum muss in der Vergangenheit liegen (spätestens gestern)."
+    if chosen < today - timedelta(days=MAX_BACKFILL_DAYS):
+        return None, f"Datum liegt zu weit zurück (max. {MAX_BACKFILL_DAYS} Tage)."
+    return chosen, ""
+
+
 if scheduler.enabled():
     scheduler.start(lambda: run_daily(yesterday()))
+
 
 
 @app.route("/run/status")
@@ -154,10 +176,16 @@ def start_run():
     secret = payload.get("secret") or request.form.get("secret") or request.headers.get("X-Run-Secret")
     if not secret_ok(secret):
         return jsonify(ok=False, error="Geheimnis falsch oder fehlt."), 403
+    raw_date = payload.get("date") or request.form.get("date")
+    day, err = parse_run_date(raw_date)
+    if err:
+        return jsonify(ok=False, error=err), 400
     if is_running():
         return jsonify(ok=False, error="Ein Lauf läuft bereits.", scrape=read_status()), 409
-    threading.Thread(target=_scrape_in_background, name="pv-scrape", daemon=True).start()
-    return jsonify(ok=True, message="Suche gestartet (Bekanntmachungen von gestern)."), 202
+    threading.Thread(
+        target=_scrape_in_background, args=(day,), name="pv-scrape", daemon=True
+    ).start()
+    return jsonify(ok=True, message=f"Suche gestartet (Stichtag {day.isoformat()})."), 202
 
 
 def main() -> None:
