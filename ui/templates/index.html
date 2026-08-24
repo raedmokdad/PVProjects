@@ -40,7 +40,7 @@
       background: linear-gradient(180deg, #ffffff 0%, #fbfdfc 100%);
       box-shadow: 0 1px 0 rgba(16, 33, 31, 0.04);
     }
-    .header-inner { max-width: 1160px; margin: 0 auto; }
+    .header-inner { max-width: 1280px; margin: 0 auto; }
     h1 {
       margin: 0 0 6px;
       font-size: 21px;
@@ -58,7 +58,7 @@
       flex: none;
     }
     .meta { color: var(--muted); font-size: 13.5px; }
-    nav {
+    nav.tabs {
       margin-top: 16px;
       display: inline-flex;
       gap: 4px;
@@ -66,7 +66,7 @@
       padding: 4px;
       border-radius: 999px;
     }
-    nav a {
+    nav.tabs a {
       color: var(--muted);
       text-decoration: none;
       font-size: 13.5px;
@@ -75,9 +75,18 @@
       border-radius: 999px;
       transition: background .15s, color .15s;
     }
-    nav a:hover { color: var(--ink); }
-    nav a.current { background: var(--card); color: var(--accent); box-shadow: var(--shadow); }
-    main { padding: 24px 32px 64px; max-width: 1160px; margin: 0 auto; }
+    nav.tabs a:hover { color: var(--ink); }
+    nav.tabs a.current { background: var(--card); color: var(--accent); box-shadow: var(--shadow); }
+    .layout {
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr);
+      gap: 24px;
+      align-items: start;
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 24px 32px 64px;
+    }
+    main { padding: 0; max-width: none; margin: 0; }
     .empty {
       color: var(--muted);
       background: var(--card);
@@ -87,12 +96,15 @@
       text-align: center;
     }
     .filters-wrap {
-      margin-top: 18px;
-      padding: 16px 18px 14px;
+      position: sticky;
+      top: 16px;
+      padding: 16px 16px 14px;
       background: var(--card);
       border: 1px solid var(--line);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
+      max-height: calc(100vh - 32px);
+      overflow: auto;
     }
     .filters-wrap h2 {
       margin: 0 0 14px;
@@ -106,9 +118,9 @@
       gap: 8px;
     }
     .filters {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 14px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
       background: transparent;
       border: 0;
       padding: 0;
@@ -218,10 +230,11 @@
     }
     .filter-checks {
       display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      align-items: center;
-      min-height: 34px;
+      flex-direction: column;
+      flex-wrap: nowrap;
+      gap: 6px;
+      align-items: stretch;
+      min-height: 0;
     }
     .filter-checks label {
       flex-direction: row;
@@ -232,9 +245,9 @@
       text-transform: none;
       letter-spacing: normal;
       font-size: 13px;
-      padding: 5px 10px;
+      padding: 6px 10px;
       border: 1px solid var(--line);
-      border-radius: 999px;
+      border-radius: 8px;
       cursor: pointer;
       user-select: none;
     }
@@ -375,9 +388,22 @@
       padding: 3px 10px;
       font-size: 12px;
     }
-    @media (max-width: 640px) {
+    @media (max-width: 900px) {
+      .layout {
+        grid-template-columns: 1fr;
+        padding: 18px 18px 56px;
+        gap: 16px;
+      }
+      .filters-wrap {
+        position: static;
+        max-height: none;
+      }
+      .filter-checks {
+        flex-direction: row;
+        flex-wrap: wrap;
+      }
+      .filter-checks label { border-radius: 999px; }
       header { padding: 18px 18px 16px; }
-      main { padding: 18px 18px 56px; }
       h1 { font-size: 18px; }
       article { padding: 16px 16px 14px; }
     }
@@ -416,11 +442,14 @@
         {% for p in portals %}<span class="portal-chip">{{ p }}</span>{% endfor %}
       </div>
     </details>
-    <nav>
+    <nav class="tabs">
       <a href="/" class="{{ 'current' if not show_all else '' }}">Letzter Stichtag</a>
       <a href="/alle" class="{{ 'current' if show_all else '' }}">Alle gespeicherten Treffer</a>
     </nav>
-    <div class="filters-wrap">
+    </div>
+  </header>
+  <div class="layout">
+    <aside class="filters-wrap" aria-label="Filter">
       <h2>Filter</h2>
       <form class="filters" id="filters" autocomplete="off">
         <div class="filter-field">Art
@@ -508,10 +537,8 @@
         Projektende ist leer, weil in diesen Treffern kein Fertigstellungs- oder Ausführungsdatum im Bekanntmachungstext steht — oft nur in den Vergabeunterlagen.
         {% endif %}
       </p>
-    </div>
-    </div>
-  </header>
-  <main>
+    </aside>
+    <main>
     {% if show_all %}
       <p class="meta">Alle bisher gespeicherten PV-/Speicher-Treffer.</p>
     {% elif run_date %}
@@ -591,6 +618,7 @@
       <button type="button" data-page-dir="1">Weiter</button>
     </nav>
   </main>
+  </div>
   <script>
     (function () {
       const form = document.getElementById("filters");
