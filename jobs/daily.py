@@ -13,7 +13,7 @@ if str(ROOT) not in sys.path:
 
 from filter.facts import apply_facts
 from filter.pv_storage import classify, load_filter_config
-from jobs.scrape_state import acquire_lock, iso_now, release_lock, write_status
+from jobs.scrape_state import acquire_lock, iso_now, release_lock, touch_lock, write_status
 from portals import ALIASES, DEFAULT_PORTALS, PORTALS
 from store.db import Store
 from store.export import export_excel
@@ -102,6 +102,7 @@ def run(day: date, portal_names: list[str] | None = None) -> int:
         matched=None,
         errors=None,
         error=None,
+        portal=None,
     )
     try:
         cfg = load_filter_config()
@@ -112,6 +113,8 @@ def run(day: date, portal_names: list[str] | None = None) -> int:
         matched_total = 0
         errors_total = 0
         for name in selected_portals(portal_names):
+            touch_lock()
+            write_status(portal=name)
             portal = PORTALS[name]()
             listed, matched, errors = run_portal(portal, iso, cfg, store)
             listed_total += listed
@@ -127,6 +130,7 @@ def run(day: date, portal_names: list[str] | None = None) -> int:
             matched=matched_total,
             errors=errors_total,
             error=None,
+            portal=None,
         )
         print(f"Fertig. {matched_total} PV/Speicher-Treffer. Excel: {xlsx}")
         print("Liste anzeigen: python app.py")

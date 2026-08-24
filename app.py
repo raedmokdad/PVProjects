@@ -16,7 +16,7 @@ from filter.facts import facts_from_row
 from filter.pv_storage import classify
 from jobs import scheduler
 from jobs.daily import run as run_daily, yesterday
-from jobs.scrape_state import is_running, read_status, secret_configured, secret_ok
+from jobs.scrape_state import heal_stale_run, is_running, read_status, secret_configured, secret_ok
 from portals import portal_labels
 from portals.click import notice_click_url
 from store.db import Store
@@ -111,7 +111,7 @@ def page_context(rows: list[dict], last, run_date=None, show_all: bool = False) 
         "n_speicher": cats["Speicher"],
         "n_both": cats["PV+Speicher"],
         "run_secret_required": secret_configured(),
-        "scrape": read_status(),
+        "scrape": heal_stale_run(),
         "portals": portal_labels(),
     }
 
@@ -167,7 +167,7 @@ if scheduler.enabled():
 
 @app.route("/run/status")
 def run_status():
-    return jsonify(read_status())
+    return jsonify(heal_stale_run())
 
 
 @app.route("/run", methods=["POST"])
@@ -176,6 +176,7 @@ def start_run():
     secret = payload.get("secret") or request.form.get("secret") or request.headers.get("X-Run-Secret")
     if not secret_ok(secret):
         return jsonify(ok=False, error="Geheimnis falsch oder fehlt."), 403
+    heal_stale_run()
     raw_date = payload.get("date") or request.form.get("date")
     day, err = parse_run_date(raw_date)
     if err:

@@ -32,6 +32,7 @@ def idle_status() -> dict[str, Any]:
         "matched": None,
         "errors": None,
         "error": None,
+        "portal": None,
     }
 
 
@@ -56,6 +57,14 @@ def write_status(**fields: Any) -> dict[str, Any]:
     tmp.write_text(json.dumps(current, ensure_ascii=False, indent=2), encoding="utf-8")
     tmp.replace(path)
     return current
+
+
+def touch_lock() -> None:
+    path = lock_path()
+    try:
+        path.touch(exist_ok=True)
+    except OSError:
+        pass
 
 
 def acquire_lock() -> bool:
@@ -89,6 +98,22 @@ def is_running() -> bool:
         return time.time() - path.stat().st_mtime <= STALE_SEC
     except OSError:
         return True
+
+
+def heal_stale_run() -> dict[str, Any]:
+    """Wenn Status 'running' ist, der Lauf aber tot (Lock weg/alt), Status freigeben."""
+    status = read_status()
+    if status.get("state") != "running":
+        return status
+    if is_running():
+        return status
+    release_lock()
+    return write_status(
+        state="error",
+        finished_at=iso_now(),
+        error="Lauf abgebrochen (hängengeblieben / Timeout). Bitte erneut starten.",
+        portal=None,
+    )
 
 
 _FLAG_VALUES = {"true", "false", "1", "0", "yes", "no", "on", "off"}

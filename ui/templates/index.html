@@ -737,7 +737,8 @@
           .then((data) => {
             if (data.state === "running") {
               setBusy(true);
-              setMsg("Portale werden abgefragt. Bitte warten, oft 5–15 Minuten.");
+              const portal = data.portal ? (" · Portal: " + data.portal) : "";
+              setMsg("Portale werden abgefragt" + portal + ". Bitte warten, oft 5–15 Minuten.");
               setTimeout(poll, 4000);
               return;
             }

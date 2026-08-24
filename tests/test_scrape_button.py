@@ -50,6 +50,24 @@ class ScrapeStateTests(unittest.TestCase):
             self.assertFalse(scrape_state.secret_configured())
             self.assertTrue(scrape_state.secret_ok(""))
 
+    def test_heal_stale_running_without_lock(self):
+        scrape_state.write_status(
+            state="running",
+            started_at="2026-08-24 11:59:33+02:00",
+            run_date="2026-08-20",
+        )
+        self.assertFalse(scrape_state.is_running())
+        healed = scrape_state.heal_stale_run()
+        self.assertEqual(healed["state"], "error")
+        self.assertIn("abgebrochen", healed["error"])
+
+    def test_heal_keeps_fresh_running(self):
+        self.assertTrue(scrape_state.acquire_lock())
+        scrape_state.write_status(state="running", started_at=scrape_state.iso_now())
+        healed = scrape_state.heal_stale_run()
+        self.assertEqual(healed["state"], "running")
+        scrape_state.release_lock()
+
     def test_secret_match(self):
         with patch.dict(os.environ, {"RUN_SECRET": "wetenergy", "RAILWAY_ENVIRONMENT": "production"}):
             self.assertTrue(scrape_state.secret_ok("wetenergy"))
