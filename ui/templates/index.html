@@ -22,6 +22,8 @@
       --planung: #7c3aed;
       --shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
       --radius: 4px;
+      --page-max: 1280px;
+      --page-pad: 32px;
     }
     * { box-sizing: border-box; }
     body {
@@ -34,32 +36,39 @@
     }
     a { color: var(--accent); }
 
-    /* ---------- Kopfzeile ---------- */
+    /* ---------- Kopfzeile: Firma und Titel in derselben Breite wie die gelbe Box ---------- */
     header {
       background: var(--navy);
       color: #fff;
-      padding: 22px 32px 40px;
     }
     .header-inner {
-      max-width: 1280px;
+      max-width: var(--page-max);
       margin: 0 auto;
-      display: flex;
+      padding: 16px var(--page-pad);
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
       align-items: center;
-      gap: 28px;
     }
-    .brand { font-size: 14px; font-weight: 600; opacity: .92; white-space: nowrap; }
+    .brand {
+      justify-self: start;
+      font-size: 15px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
     h1 {
       margin: 0;
+      justify-self: center;
       font-size: 22px;
       font-weight: 600;
       letter-spacing: -0.01em;
+      text-align: center;
     }
 
     /* ---------- Statusleiste ---------- */
     .statusbar-wrap {
-      max-width: 1280px;
-      margin: -28px auto 0;
-      padding: 0 32px;
+      max-width: var(--page-max);
+      margin: 16px auto 0;
+      padding: 0 var(--page-pad);
       position: relative;
       z-index: 5;
     }
@@ -168,9 +177,9 @@
       grid-template-columns: 280px minmax(0, 1fr);
       gap: 24px;
       align-items: start;
-      max-width: 1280px;
+      max-width: var(--page-max);
       margin: 0 auto;
-      padding: 22px 32px 64px;
+      padding: 22px var(--page-pad) 64px;
     }
     main { min-width: 0; }
 
@@ -493,9 +502,8 @@
 
     /* Schmale Fenster: die Filterspalte bleibt links und wird nur enger. */
     @media (max-width: 1120px) {
-      .layout { grid-template-columns: 258px minmax(0, 1fr); gap: 16px; padding: 18px 16px 56px; }
-      .statusbar-wrap { padding: 0 16px; }
-      header { padding: 18px 16px 36px; }
+      :root { --page-pad: 16px; }
+      .layout { grid-template-columns: 258px minmax(0, 1fr); gap: 16px; padding: 18px var(--page-pad) 56px; }
       .fgroup { padding: 13px 12px; }
       .sidebar-title { padding: 11px 12px; }
       .fpair input[type="date"]::-webkit-calendar-picker-indicator { margin: 0; padding: 0; }
@@ -513,8 +521,8 @@
     @media (max-width: 700px) {
       .layout { grid-template-columns: 1fr; gap: 14px; }
       .sidebar { position: static; max-height: none; overflow: visible; }
-      .header-inner { flex-direction: column; align-items: flex-start; gap: 4px; }
-      h1 { font-size: 18px; }
+      .header-inner { grid-template-columns: 1fr; justify-items: start; gap: 2px; padding-top: 12px; padding-bottom: 12px; }
+      h1 { justify-self: start; font-size: 16px; text-align: left; }
       .results-head h2 { font-size: 17px; }
       .statusbar { gap: 8px 12px; }
       .status-actions {
