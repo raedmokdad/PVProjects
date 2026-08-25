@@ -734,9 +734,13 @@
             <option value="date-desc">Datum, neueste zuerst</option>
             <option value="date-asc">Datum, älteste zuerst</option>
             <option value="deadline-asc">Frist, früheste zuerst</option>
+            <option value="deadline-desc">Frist, späteste zuerst</option>
             <option value="kwp-desc">Anlagenleistung, größte zuerst</option>
+            <option value="kwp-asc">Anlagenleistung, kleinste zuerst</option>
             <option value="area-desc">Fläche, größte zuerst</option>
+            <option value="area-asc">Fläche, kleinste zuerst</option>
             <option value="value-desc">Volumen, größtes zuerst</option>
+            <option value="value-asc">Volumen, kleinstes zuerst</option>
           </select>
         </label>
         <a class="chip {{ 'is-current' if not show_all else '' }}" href="/">Letzter Stichtag</a>
@@ -932,29 +936,27 @@
         const mode = sortEl ? sortEl.value : "date-desc";
         const numKey = (card, key) => {
           const raw = card.dataset[key];
-          return raw === "" || raw == null ? null : Number(raw);
+          if (raw === "" || raw == null) return 0;
+          const n = Number(raw);
+          return Number.isNaN(n) ? 0 : n;
         };
-        const byNumDesc = (key) => (a, b) => {
-          const x = numKey(a, key), y = numKey(b, key);
-          if (x == null && y == null) return 0;
-          if (x == null) return 1;
-          if (y == null) return -1;
-          return y - x;
-        };
+        const dateKey = (card, key) => card.dataset[key] || "0000-00-00";
+        const byNum = (key, dir) => (a, b) => dir * (numKey(a, key) - numKey(b, key));
         const byDate = (key, dir) => (a, b) => {
-          const x = a.dataset[key] || "", y = b.dataset[key] || "";
-          if (!x && !y) return 0;
-          if (!x) return 1;
-          if (!y) return -1;
+          const x = dateKey(a, key), y = dateKey(b, key);
           return dir * (x < y ? -1 : x > y ? 1 : 0);
         };
         const cmp = {
           "date-desc": byDate("published", -1),
           "date-asc": byDate("published", 1),
           "deadline-asc": byDate("deadline", 1),
-          "kwp-desc": byNumDesc("kwp"),
-          "area-desc": byNumDesc("area"),
-          "value-desc": byNumDesc("value"),
+          "deadline-desc": byDate("deadline", -1),
+          "kwp-desc": byNum("kwp", -1),
+          "kwp-asc": byNum("kwp", 1),
+          "area-desc": byNum("area", -1),
+          "area-asc": byNum("area", 1),
+          "value-desc": byNum("value", -1),
+          "value-asc": byNum("value", 1),
         }[mode];
         return cmp ? list.slice().sort(cmp) : list;
       }
