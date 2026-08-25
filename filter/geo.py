@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import re
 
-UNKNOWN = "Ohne Angabe"
+UNKNOWN = "Ohne Ort"
 
 NUTS_PREFIX = {
     "DE1": "Baden-Württemberg",

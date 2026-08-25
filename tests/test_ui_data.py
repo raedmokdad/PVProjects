@@ -94,7 +94,7 @@ class GeoTest(unittest.TestCase):
         self.assertEqual(bundesland_for({"city": "14467 Potsdam"}), "Brandenburg")
 
     def test_unknown(self):
-        self.assertEqual(bundesland_for({"city": "irgendwo"}), "Ohne Angabe")
+        self.assertEqual(bundesland_for({"city": "irgendwo"}), "Ohne Ort")
 
     def test_clean_city(self):
         self.assertEqual(clean_city("Musterweg 3, 50667 Köln-Innenstadt, Deutschland"), "Köln")
@@ -112,7 +112,7 @@ class GeoTest(unittest.TestCase):
         self.assertEqual(facets[0]["name"], "Bayern")
         self.assertEqual(facets[0]["count"], 2)
         self.assertEqual(facets[0]["cities"][0], {"name": "München", "count": 2})
-        self.assertEqual(facets[-1]["name"], "Ohne Angabe")
+        self.assertEqual(facets[-1]["name"], "Ohne Ort")
 
 
 class PortalCatalogTest(unittest.TestCase):

@@ -78,6 +78,13 @@ def format_date_de(iso) -> str:
         return ""
 
 
+def date_span(lo: str, hi: str) -> str:
+    a, b = format_date_de(lo), format_date_de(hi)
+    if a and b:
+        return a if a == b else f"{a} – {b}"
+    return a or b
+
+
 def numeric_bounds(rows: list[dict], key: str) -> tuple[float | None, float | None]:
     values = [row[key] for row in rows if row.get(key) is not None]
     if not values:
@@ -141,8 +148,10 @@ def page_context(rows: list[dict], last, run_date=None, show_all: bool = False) 
         "pub_max": pub_max,
         "deadline_min": deadline_min,
         "deadline_max": deadline_max,
+        "deadline_span": date_span(deadline_min, deadline_max),
         "end_min": end_min,
         "end_max": end_max,
+        "end_span": date_span(end_min, end_max),
         "cities": city_options(rows),
         "ort_facets": ort_facets(rows),
         "total": len(rows),

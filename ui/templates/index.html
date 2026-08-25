@@ -297,6 +297,9 @@
     .facet-cities input { margin: 0; width: 15px; height: 15px; accent-color: var(--accent); flex: none; }
     .facet-city.is-extra { display: none; }
     .facet-cities.show-all .facet-city.is-extra { display: block; }
+    .facet-land.is-extra { display: none; }
+    .facet-lands.show-all .facet-land.is-extra { display: block; }
+    .more-lands { margin-top: 8px; display: block; }
     .more-btn {
       font: inherit;
       font-size: 12.5px;
@@ -310,9 +313,41 @@
 
     /* ---------- Trefferliste ---------- */
     .results-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
       margin: 0 0 12px;
     }
     .results-head h2 { margin: 0; font-size: 19px; font-weight: 700; }
+    .page-size-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .page-size-label select {
+      font: inherit;
+      font-size: 13.5px;
+      color: var(--ink);
+      border: 1px solid #c9ced6;
+      border-radius: var(--radius);
+      padding: 6px 8px;
+      background: #fff;
+    }
+    .date-readonly {
+      margin: 0 0 10px;
+    }
+    .date-readonly .fcount { display: block; margin-bottom: 6px; }
+    .date-readonly input:disabled {
+      background: #fff;
+      color: var(--ink);
+      opacity: 1;
+      cursor: default;
+    }
 
     .chips {
       display: flex;
@@ -657,8 +692,10 @@
           <datalist id="ort-list">
             {% for city in cities %}<option value="{{ city }}"></option>{% endfor %}
           </datalist>
+          {% set land_rest = ort_facets|length - 2 %}
+          <div class="facet-lands">
           {% for land in ort_facets %}
-          <details class="facet-land"{% if loop.first %} open{% endif %}>
+          <details class="facet-land{% if loop.index > 2 %} is-extra{% endif %}">
             <summary>
               <input type="checkbox" class="f-land" value="{{ land.name }}"
                      onclick="event.stopPropagation()">
@@ -678,43 +715,41 @@
             {% endif %}
           </details>
           {% endfor %}
+          {% if land_rest > 0 %}
+          <button type="button" class="more-btn more-lands">Weiter ({{ land_rest }})</button>
+          {% endif %}
+          </div>
         </div>
 
         <div class="fgroup">
-          <h3>Weitere Filter</h3>
-          <div class="fchecks" style="gap: 12px;">
-            <label style="flex-direction: column; align-items: stretch; gap: 6px;">
-              <span class="fcount">Bewerbungsfrist</span>
-              <span class="fpair">
-                {% if deadline_min %}
-                <input type="date" id="f-deadline-from" min="{{ deadline_min }}" max="{{ deadline_max }}" value="{{ deadline_min }}" data-bound="{{ deadline_min }}">
-                <span>-</span>
-                <input type="date" id="f-deadline-to" min="{{ deadline_min }}" max="{{ deadline_max }}" value="{{ deadline_max }}" data-bound="{{ deadline_max }}">
-                {% else %}
-                <input type="date" id="f-deadline-from" disabled><span>-</span><input type="date" id="f-deadline-to" disabled>
-                {% endif %}
-              </span>
-            </label>
-            <label style="flex-direction: column; align-items: stretch; gap: 6px;">
-              <span class="fcount">Projektende</span>
-              <span class="fpair">
-                {% if end_min %}
-                <input type="date" id="f-end-from" min="{{ end_min }}" max="{{ end_max }}" value="{{ end_min }}" data-bound="{{ end_min }}">
-                <span>-</span>
-                <input type="date" id="f-end-to" min="{{ end_min }}" max="{{ end_max }}" value="{{ end_max }}" data-bound="{{ end_max }}">
-                {% else %}
-                <input type="date" id="f-end-from" disabled><span>-</span><input type="date" id="f-end-to" disabled>
-                {% endif %}
-              </span>
-            </label>
-            <label style="flex-direction: column; align-items: stretch; gap: 6px;">
-              <span class="fcount">Pro Seite</span>
-              <select id="page-size">
-                <option value="10" selected>10</option>
-                <option value="20">20</option>
-                <option value="50">50</option>
-              </select>
-            </label>
+          <h3>Daten & Fristen</h3>
+          <div class="date-readonly">
+            <span class="fcount">Bewerbungsfrist</span>
+            <span class="fpair">
+              {% if deadline_min %}
+              <input type="date" value="{{ deadline_min }}" disabled>
+              <span>-</span>
+              <input type="date" value="{{ deadline_max }}" disabled>
+              {% else %}
+              <input type="date" disabled>
+              <span>-</span>
+              <input type="date" disabled>
+              {% endif %}
+            </span>
+          </div>
+          <div class="date-readonly">
+            <span class="fcount">Projektende</span>
+            <span class="fpair">
+              {% if end_min %}
+              <input type="date" value="{{ end_min }}" disabled>
+              <span>-</span>
+              <input type="date" value="{{ end_max }}" disabled>
+              {% else %}
+              <input type="date" disabled>
+              <span>-</span>
+              <input type="date" disabled>
+              {% endif %}
+            </span>
           </div>
           {% if not end_min %}
           <p class="fsub">Projektende ist leer, weil in diesen Treffern kein Fertigstellungsdatum im Text steht — das steht oft nur in den Vergabeunterlagen.</p>
@@ -726,6 +761,13 @@
     <main>
       <div class="results-head">
         <h2 id="results-count">{{ total }} Ausschreibungen gefunden</h2>
+        <label class="page-size-label">Pro Seite
+          <select id="page-size">
+            <option value="10" selected>10</option>
+            <option value="20">20</option>
+            <option value="50">50</option>
+          </select>
+        </label>
       </div>
 
       <div class="chips">
@@ -735,8 +777,8 @@
             <option value="date-asc">Datum, älteste zuerst</option>
             <option value="deadline-asc">Frist, früheste zuerst</option>
             <option value="deadline-desc">Frist, späteste zuerst</option>
-            <option value="kwp-desc">Anlagenleistung, größte zuerst</option>
-            <option value="kwp-asc">Anlagenleistung, kleinste zuerst</option>
+            <option value="kwp-asc">Anlagenleistung: niedrigste zuerst</option>
+            <option value="kwp-desc">Anlagenleistung: höchste zuerst</option>
             <option value="area-desc">Fläche, größte zuerst</option>
             <option value="area-asc">Fläche, kleinste zuerst</option>
             <option value="value-desc">Volumen, größtes zuerst</option>
@@ -798,7 +840,7 @@
           <div class="card-body">
             <dl class="card-fields">
               <div><dt>Auftraggeber:</dt><dd{% if not row['organisation'] %} class="is-empty"{% endif %}>{{ row['organisation'] or '—' }}</dd></div>
-              <div><dt>Ort:</dt><dd{% if not row['city_label'] %} class="is-empty"{% endif %}>{{ row['city_label'] or '—' }}{% if row['bundesland'] and row['bundesland'] != 'Ohne Angabe' %} ({{ row['bundesland'] }}){% endif %}</dd></div>
+              <div><dt>Ort:</dt><dd{% if not row['city_label'] %} class="is-empty"{% endif %}>{{ row['city_label'] or '—' }}{% if row['bundesland'] and row['bundesland'] != 'Ohne Ort' %} ({{ row['bundesland'] }}){% endif %}</dd></div>
               <div><dt>Fläche:</dt><dd{% if not row['area_label'] %} class="is-empty"{% endif %}>{{ row['area_label'] or '—' }}</dd></div>
               <div><dt>Anlagenleistung:</dt><dd{% if not row['kwp_label'] %} class="is-empty"{% endif %}>{{ row['kwp_label'] or '—' }}</dd></div>
               <div><dt>Volumen:</dt><dd{% if not row['value_label'] %} class="is-empty"{% endif %}>{{ row['value_label'] or '—' }}</dd></div>
@@ -893,8 +935,6 @@
         const areaOff = pairUntouched("f-area-min", "f-area-max");
         const kwpOff = pairUntouched("f-kwp-min", "f-kwp-max");
         const pubOff = pairUntouched("f-pub-from", "f-pub-to");
-        const deadOff = pairUntouched("f-deadline-from", "f-deadline-to");
-        const endOff = pairUntouched("f-end-from", "f-end-to");
         return {
           ort: val("f-ort").toLowerCase(),
           cats: catBoxes.filter((b) => b.checked).map((b) => b.dataset.cat),
@@ -908,10 +948,6 @@
           kwpMax: kwpOff ? null : num("f-kwp-max"),
           pubFrom: pubOff ? "" : val("f-pub-from"),
           pubTo: pubOff ? "" : val("f-pub-to"),
-          deadFrom: deadOff ? "" : val("f-deadline-from"),
-          deadTo: deadOff ? "" : val("f-deadline-to"),
-          endFrom: endOff ? "" : val("f-end-from"),
-          endTo: endOff ? "" : val("f-end-to"),
         };
       }
 
@@ -927,8 +963,6 @@
         if (!inDateRange(d.published || "", s.pubFrom, s.pubTo)) return false;
         if (!inRange(d.area || "", s.areaMin, s.areaMax)) return false;
         if (!inRange(d.kwp || "", s.kwpMin, s.kwpMax)) return false;
-        if (!inDateRange(d.deadline || "", s.deadFrom, s.deadTo)) return false;
-        if (!inDateRange(d.end || "", s.endFrom, s.endTo)) return false;
         return true;
       }
 
@@ -979,8 +1013,6 @@
         if (s.areaMin != null) items.push({ label: "Fläche " + s.areaMin + "–" + s.areaMax + " m²", reset: () => resetPair("f-area-min", "f-area-max") });
         if (s.kwpMin != null) items.push({ label: "Leistung " + s.kwpMin + "–" + s.kwpMax + " kWp", reset: () => resetPair("f-kwp-min", "f-kwp-max") });
         if (s.pubFrom) items.push({ label: "Datum " + s.pubFrom + " – " + s.pubTo, reset: () => resetPair("f-pub-from", "f-pub-to") });
-        if (s.deadFrom) items.push({ label: "Frist " + s.deadFrom + " – " + s.deadTo, reset: () => resetPair("f-deadline-from", "f-deadline-to") });
-        if (s.endFrom) items.push({ label: "Projektende " + s.endFrom + " – " + s.endTo, reset: () => resetPair("f-end-from", "f-end-to") });
 
         chipsEl.textContent = "";
         items.forEach((item) => {
@@ -999,11 +1031,10 @@
       }
 
       function renderPagers(pageNow, pages, total) {
-        const label = pages <= 1 ? total + " Treffer" : "Seite " + pageNow + " von " + pages;
         pagers.forEach((nav) => {
           if (!nav) return;
           nav.hidden = total === 0 || pages <= 1;
-          nav.querySelector(".pager-status").textContent = label;
+          nav.querySelector(".pager-status").textContent = "Seite " + pageNow + " von " + pages;
           nav.querySelector('[data-page-dir="-1"]').disabled = pageNow <= 1;
           nav.querySelector('[data-page-dir="1"]').disabled = pageNow >= pages;
         });
@@ -1034,11 +1065,18 @@
       form.addEventListener("input", () => apply(true));
       form.addEventListener("change", () => apply(true));
       if (sortEl) sortEl.addEventListener("change", () => apply(true));
+      if (sizeEl) sizeEl.addEventListener("change", () => apply(true));
 
       form.addEventListener("click", (event) => {
         const more = event.target.closest(".more-btn");
         if (!more) return;
         event.preventDefault();
+        if (more.classList.contains("more-lands")) {
+          const wrap = more.closest(".facet-lands");
+          if (wrap) wrap.classList.add("show-all");
+          more.remove();
+          return;
+        }
         const list = more.closest(".facet-cities");
         if (list) list.classList.add("show-all");
         more.remove();
