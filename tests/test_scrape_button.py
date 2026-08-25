@@ -173,5 +173,59 @@ class AppRunOpenTests(unittest.TestCase):
             )
 
 
+class AppDeleteTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.env = patch.dict(
+            os.environ,
+            {"DATA_DIR": self.tmp.name, "RUN_SECRET": "test-secret", "RAILWAY_ENVIRONMENT": "production"},
+            clear=False,
+        )
+        self.env.start()
+        self.addCleanup(self.env.stop)
+        import app as app_mod
+
+        self.client = app_mod.app.test_client()
+
+    def test_delete_requires_secret(self):
+        res = self.client.delete("/notice", json={"portal": "berlin", "pid": "1"})
+        self.assertEqual(res.status_code, 403)
+
+    def test_delete_missing_ids(self):
+        res = self.client.delete("/notice", json={"secret": "test-secret"})
+        self.assertEqual(res.status_code, 400)
+
+    def test_delete_unknown(self):
+        res = self.client.delete(
+            "/notice", json={"secret": "test-secret", "portal": "berlin", "pid": "missing"}
+        )
+        self.assertEqual(res.status_code, 404)
+
+    def test_delete_notice(self):
+        from portals.base import Notice
+        from store.db import Store
+
+        store = Store()
+        store.upsert_notice(
+            Notice(
+                portal="berlin",
+                pid="abc",
+                title="PV-Anlage",
+                published_on="2026-08-01",
+                is_match=True,
+                category="PV",
+            ),
+            "2026-08-01",
+        )
+        res = self.client.delete(
+            "/notice", json={"secret": "test-secret", "portal": "berlin", "pid": "abc"}
+        )
+        self.assertEqual(res.status_code, 200)
+        self.assertTrue(res.get_json()["ok"])
+        self.assertEqual(len(store.matches()), 0)
+        store.close()
+
+
 if __name__ == "__main__":
     unittest.main()

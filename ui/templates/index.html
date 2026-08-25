@@ -162,6 +162,27 @@
       cursor: pointer;
       padding: 4px 8px;
     }
+    #delete-dialog { max-width: 460px; }
+    #delete-dialog .dialog-body p { margin: 0; }
+    .dialog-title-preview {
+      margin: 10px 0 0;
+      font-weight: 600;
+      color: var(--ink);
+      overflow-wrap: anywhere;
+    }
+    .dialog-error { color: #b91c1c; font-size: 13.5px; margin-top: 12px; }
+    .dialog-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 18px;
+    }
+    .btn-danger {
+      color: #fff;
+      background: #b91c1c;
+      border-color: #b91c1c;
+    }
+    .btn-danger:hover:not(:disabled) { background: #991b1b; border-color: #991b1b; }
     .portal-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
     .portal-list a {
       display: block;
@@ -478,7 +499,29 @@
       -webkit-box-orient: vertical;
       overflow: hidden;
     }
-    .btn-details { flex: none; padding: 7px 20px; font-size: 13.5px; }
+    .btn-details { display: block; text-align: center; padding: 7px 20px; font-size: 13.5px; }
+    .card-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex: none;
+      align-items: stretch;
+      min-width: 108px;
+    }
+    .btn-delete {
+      font: inherit;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: #b91c1c;
+      background: #fff;
+      border: 1px solid #b91c1c;
+      border-radius: var(--radius);
+      padding: 7px 16px;
+      cursor: pointer;
+      text-align: center;
+    }
+    .btn-delete:hover { background: #fef2f2; }
+    .btn-delete:disabled { opacity: .6; cursor: wait; }
 
     .empty {
       color: var(--muted);
@@ -522,6 +565,7 @@
       .card-dates { text-align: left; flex-direction: row; gap: 24px; }
       .card-id { margin-left: 0; }
       .btn-details { align-self: flex-start; }
+      .card-actions { align-self: flex-start; }
     }
     /* Handy: eine Spalte, und der Filter liegt eingeklappt hinter einem Knopf,
        damit man nicht erst an allen Filtern vorbeiscrollen muss. */
@@ -613,6 +657,22 @@
     </div>
   </dialog>
 
+  <dialog id="delete-dialog">
+    <div class="dialog-head">
+      <h2>Ausschreibung löschen?</h2>
+      <button type="button" class="dialog-close" id="delete-close" aria-label="Schließen">&times;</button>
+    </div>
+    <div class="dialog-body">
+      <p>Diese Ausschreibung wirklich aus der Liste entfernen?</p>
+      <p class="dialog-title-preview" id="delete-title"></p>
+      <p class="dialog-error" id="delete-error" hidden></p>
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-ghost" id="delete-cancel" autofocus>Abbrechen</button>
+        <button type="button" class="btn btn-danger" id="delete-confirm">Löschen</button>
+      </div>
+    </div>
+  </dialog>
+
   <div class="layout">
     <aside class="sidebar" aria-label="Filter">
       <h2 class="sidebar-title">
@@ -631,7 +691,7 @@
         </div>
 
         <div class="fgroup">
-          <h3>Fläche</h3>
+          <h3>Fläche m²</h3>
           <div class="fpair">
             {% if area_min %}
             <input type="number" id="f-area-min" min="{{ area_min }}" max="{{ area_max }}" step="1" value="{{ area_min }}" data-bound="{{ area_min }}" placeholder="Von">
@@ -646,7 +706,7 @@
         </div>
 
         <div class="fgroup">
-          <h3>Anlagenleistung</h3>
+          <h3>Anlagenleistung kWp</h3>
           <div class="fpair">
             {% if kwp_min %}
             <input type="number" id="f-kwp-min" min="{{ kwp_min }}" max="{{ kwp_max }}" step="0.1" value="{{ kwp_min }}" data-bound="{{ kwp_min }}" placeholder="Von">
@@ -813,6 +873,8 @@
           data-deadline="{{ row['deadline'] or '' }}"
           data-end="{{ row['completion_on'] or '' }}"
           data-category="{{ row['category'] or 'PV' }}"
+          data-portal="{{ row['portal'] or '' }}"
+          data-pid="{{ row['pid'] or '' }}"
         >
           <div class="card-head">
             <h3 class="card-title">
@@ -856,9 +918,14 @@
               <span>Beschreibung:</span>
               <span class="text">{{ row['excerpt'] or 'Keine Beschreibung im Portal hinterlegt.' }}</span>
             </p>
-            {% if row['open_url'] %}
-              <a class="btn btn-details" href="{{ row['open_url'] }}" target="_blank" rel="noopener">Details</a>
-            {% endif %}
+            <div class="card-actions">
+              <button type="button" class="btn-delete"
+                      data-portal="{{ row['portal'] or '' }}"
+                      data-pid="{{ row['pid'] or '' }}">Löschen</button>
+              {% if row['open_url'] %}
+                <a class="btn btn-details" href="{{ row['open_url'] }}" target="_blank" rel="noopener">Details</a>
+              {% endif %}
+            </div>
           </div>
         </article>
       {% endfor %}
@@ -1093,6 +1160,100 @@
           if (top) top.scrollIntoView({ behavior: "smooth", block: "start" });
         });
       });
+
+      const deleteDialog = document.getElementById("delete-dialog");
+      const deleteTitle = document.getElementById("delete-title");
+      const deleteError = document.getElementById("delete-error");
+      const deleteConfirm = document.getElementById("delete-confirm");
+      const deleteCancel = document.getElementById("delete-cancel");
+      const deleteClose = document.getElementById("delete-close");
+      let pendingDelete = null;
+
+      function showDeleteError(text) {
+        if (!deleteError) return;
+        deleteError.textContent = text || "";
+        deleteError.hidden = !text;
+      }
+
+      function closeDeleteDialog() {
+        if (deleteDialog && deleteDialog.open) deleteDialog.close();
+      }
+
+      results.addEventListener("click", (event) => {
+        const btn = event.target.closest(".btn-delete");
+        if (!btn || btn.disabled || !deleteDialog) return;
+        const card = btn.closest(".card");
+        const title = (card && card.querySelector(".card-title")
+          ? card.querySelector(".card-title").textContent
+          : ""
+        ).replace(/\s+/g, " ").trim();
+        pendingDelete = {
+          btn: btn,
+          card: card,
+          portal: btn.dataset.portal || "",
+          pid: btn.dataset.pid || "",
+        };
+        if (deleteTitle) deleteTitle.textContent = title;
+        showDeleteError("");
+        if (deleteConfirm) deleteConfirm.disabled = false;
+        deleteDialog.showModal();
+      });
+
+      if (deleteConfirm) {
+        deleteConfirm.addEventListener("click", () => {
+          if (!pendingDelete) return;
+          const bar = document.getElementById("run-bar");
+          const secretInput = document.getElementById("run-secret");
+          const needsSecret = bar && bar.dataset.secretRequired === "1";
+          const secret = secretInput ? secretInput.value.trim() : "";
+          if (needsSecret && !secret) {
+            showDeleteError("Bitte zuerst das Geheimnis (RUN_SECRET) oben eintragen.");
+            return;
+          }
+          const btn = pendingDelete.btn;
+          const card = pendingDelete.card;
+          deleteConfirm.disabled = true;
+          btn.disabled = true;
+          fetch("/notice", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              portal: pendingDelete.portal,
+              pid: pendingDelete.pid,
+              secret: secret,
+            }),
+          })
+            .then(async (r) => {
+              const data = await r.json().catch(() => ({}));
+              if (!r.ok) {
+                btn.disabled = false;
+                deleteConfirm.disabled = false;
+                showDeleteError(data.error || "Löschen fehlgeschlagen.");
+                return;
+              }
+              pendingDelete = null;
+              closeDeleteDialog();
+              if (card) {
+                const idx = cards.indexOf(card);
+                if (idx >= 0) cards.splice(idx, 1);
+                card.remove();
+              }
+              apply(false);
+            })
+            .catch(() => {
+              btn.disabled = false;
+              deleteConfirm.disabled = false;
+              showDeleteError("Löschen fehlgeschlagen (Netzwerk).");
+            });
+        });
+      }
+      if (deleteCancel) deleteCancel.addEventListener("click", closeDeleteDialog);
+      if (deleteClose) deleteClose.addEventListener("click", closeDeleteDialog);
+      if (deleteDialog) {
+        deleteDialog.addEventListener("click", (event) => {
+          if (event.target === deleteDialog) deleteDialog.close();
+        });
+      }
 
       const sidebar = document.querySelector(".sidebar");
       const filterToggle = document.getElementById("filter-toggle");

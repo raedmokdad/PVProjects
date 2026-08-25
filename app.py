@@ -238,6 +238,26 @@ def start_run():
     return jsonify(ok=True, message=f"Suche gestartet (Stichtag {day.isoformat()})."), 202
 
 
+@app.route("/notice", methods=["DELETE"])
+def delete_notice():
+    payload = request.get_json(silent=True) or {}
+    secret = payload.get("secret") or request.form.get("secret") or request.headers.get("X-Run-Secret")
+    if not secret_ok(secret):
+        return jsonify(ok=False, error="Geheimnis falsch oder fehlt."), 403
+    portal = str(payload.get("portal") or request.form.get("portal") or "").strip()
+    pid = str(payload.get("pid") or request.form.get("pid") or "").strip()
+    if not portal or not pid:
+        return jsonify(ok=False, error="Portal und ID fehlen."), 400
+    store = Store()
+    try:
+        deleted = store.delete_notice(portal, pid)
+    finally:
+        store.close()
+    if not deleted:
+        return jsonify(ok=False, error="Eintrag nicht gefunden."), 404
+    return jsonify(ok=True)
+
+
 def main() -> None:
     host = os.environ.get("HOST", "127.0.0.1")
     port = int(os.environ.get("PORT", "8000"))

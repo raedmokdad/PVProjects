@@ -193,6 +193,17 @@ class Store:
         cur = self.conn.execute("SELECT * FROM runs ORDER BY id DESC LIMIT 1")
         return cur.fetchone()
 
+    def delete_notice(self, portal: str, pid: str) -> bool:
+        cur = self.conn.execute(
+            "DELETE FROM notices WHERE portal=? AND pid=?",
+            (portal, pid),
+        )
+        self.conn.commit()
+        return cur.rowcount > 0
+
+    def close(self) -> None:
+        self.conn.close()
+
     def matches_unique(self, published_on: str | None = None) -> list[sqlite3.Row]:
         """Treffer ohne doppelte noticeIdentifier / TED-ID (Anzeige)."""
         return dedupe_notice_rows(self.matches(published_on))
