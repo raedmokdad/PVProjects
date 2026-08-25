@@ -653,7 +653,7 @@
 
         <div class="fgroup">
           <h3>Ort</h3>
-          <input type="search" id="f-ort" list="ort-list" placeholder="Ort oder Auftraggeber suchen">
+          <input type="search" id="f-ort" list="ort-list" placeholder="Ort suchen">
           <datalist id="ort-list">
             {% for city in cities %}<option value="{{ city }}"></option>{% endfor %}
           </datalist>
@@ -758,7 +758,7 @@
       {% for row in rows %}
         <article class="card"
           data-published="{{ row['published_on'] or '' }}"
-          data-ort="{{ (row['city'] or '') }} {{ (row['organisation'] or '') }} {{ (row['nuts'] or '') }} {{ (row['title'] or '') }}"
+          data-ort="{{ (row['city_label'] or '') }} {{ (row['city'] or '') }} {{ (row['bundesland'] or '') }} {{ (row['nuts'] or '') }}"
           data-land="{{ row['bundesland'] or '' }}"
           data-city="{{ row['city_label'] or '' }}"
           data-area="{{ row['area_m2'] if row['area_m2'] is not none else '' }}"
@@ -973,7 +973,7 @@
         if (days) items.push({ label: days === 1 ? "24 Stunden" : days + " Tage", reset: () => { const all = form.querySelector('input[name="f-zeit"][value="0"]'); if (all) all.checked = true; } });
         s.lands.forEach((name) => items.push({ label: name, reset: () => landBoxes.forEach((b) => { if (b.value === name) b.checked = false; }) }));
         s.cities.forEach((name) => items.push({ label: name, reset: () => cityBoxes.forEach((b) => { if (b.value === name) b.checked = false; }) }));
-        if (s.ort) items.push({ label: "Suche: " + s.ort, reset: () => { const n = el("f-ort"); if (n) n.value = ""; } });
+        if (s.ort) items.push({ label: "Ort: " + s.ort, reset: () => { const n = el("f-ort"); if (n) n.value = ""; } });
         if (s.areaMin != null) items.push({ label: "Fläche " + s.areaMin + "–" + s.areaMax + " m²", reset: () => resetPair("f-area-min", "f-area-max") });
         if (s.kwpMin != null) items.push({ label: "Leistung " + s.kwpMin + "–" + s.kwpMax + " kWp", reset: () => resetPair("f-kwp-min", "f-kwp-max") });
         if (s.pubFrom) items.push({ label: "Datum " + s.pubFrom + " – " + s.pubTo, reset: () => resetPair("f-pub-from", "f-pub-to") });
