@@ -205,6 +205,17 @@ class Store:
         self.conn.commit()
         return cur.rowcount > 0
 
+    def mark_inbox(self, portal: str, pid: str) -> bool:
+        cur = self.conn.execute(
+            """
+            UPDATE notices SET bucket='inbox'
+            WHERE portal=? AND pid=? AND COALESCE(bucket, 'inbox')='relevant'
+            """,
+            (portal, pid),
+        )
+        self.conn.commit()
+        return cur.rowcount > 0
+
     def relevant_unique(self) -> list[sqlite3.Row]:
         cur = self.conn.execute(
             """

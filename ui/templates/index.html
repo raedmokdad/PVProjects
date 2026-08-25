@@ -542,6 +542,20 @@
     }
     .btn-relevant:hover { background: #ecfdf5; }
     .btn-relevant:disabled { opacity: .6; cursor: wait; }
+    .btn-inbox {
+      font: inherit;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--accent);
+      background: #fff;
+      border: 1px solid var(--accent);
+      border-radius: var(--radius);
+      padding: 7px 16px;
+      cursor: pointer;
+      text-align: center;
+    }
+    .btn-inbox:hover { background: #eaf3fa; }
+    .btn-inbox:disabled { opacity: .6; cursor: wait; }
 
     .empty {
       color: var(--muted);
@@ -705,6 +719,22 @@
       <div class="dialog-actions">
         <button type="button" class="btn btn-ghost" id="relevant-cancel" autofocus>Abbrechen</button>
         <button type="button" class="btn btn-relevant-confirm" id="relevant-confirm">OK</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="inbox-dialog">
+    <div class="dialog-head">
+      <h2>Zurück in die Liste?</h2>
+      <button type="button" class="dialog-close" id="inbox-close" aria-label="Schließen">&times;</button>
+    </div>
+    <div class="dialog-body">
+      <p>Diese Ausschreibung wieder in die normale Liste übernehmen und hier entfernen?</p>
+      <p class="dialog-title-preview" id="inbox-title"></p>
+      <p class="dialog-error" id="inbox-error" hidden></p>
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-ghost" id="inbox-cancel" autofocus>Abbrechen</button>
+        <button type="button" class="btn" id="inbox-confirm">OK</button>
       </div>
     </div>
   </dialog>
@@ -964,6 +994,10 @@
               <button type="button" class="btn-relevant"
                       data-portal="{{ row['portal'] or '' }}"
                       data-pid="{{ row['pid'] or '' }}">Relevant</button>
+              {% else %}
+              <button type="button" class="btn-inbox"
+                      data-portal="{{ row['portal'] or '' }}"
+                      data-pid="{{ row['pid'] or '' }}">Zur Liste</button>
               {% endif %}
               <button type="button" class="btn-delete"
                       data-portal="{{ row['portal'] or '' }}"
@@ -1224,8 +1258,15 @@
       const relevantConfirm = document.getElementById("relevant-confirm");
       const relevantCancel = document.getElementById("relevant-cancel");
       const relevantClose = document.getElementById("relevant-close");
+      const inboxDialog = document.getElementById("inbox-dialog");
+      const inboxTitle = document.getElementById("inbox-title");
+      const inboxError = document.getElementById("inbox-error");
+      const inboxConfirm = document.getElementById("inbox-confirm");
+      const inboxCancel = document.getElementById("inbox-cancel");
+      const inboxClose = document.getElementById("inbox-close");
       let pendingDelete = null;
       let pendingRelevant = null;
+      let pendingInbox = null;
 
       function cardTitleOf(card) {
         return (card && card.querySelector(".card-title")
@@ -1273,6 +1314,14 @@
       function closeRelevantDialog() {
         if (relevantDialog && relevantDialog.open) relevantDialog.close();
       }
+      function showInboxError(text) {
+        if (!inboxError) return;
+        inboxError.textContent = text || "";
+        inboxError.hidden = !text;
+      }
+      function closeInboxDialog() {
+        if (inboxDialog && inboxDialog.open) inboxDialog.close();
+      }
 
       results.addEventListener("click", (event) => {
         const relBtn = event.target.closest(".btn-relevant");
@@ -1288,6 +1337,21 @@
           showRelevantError("");
           if (relevantConfirm) relevantConfirm.disabled = false;
           relevantDialog.showModal();
+          return;
+        }
+        const inboxBtn = event.target.closest(".btn-inbox");
+        if (inboxBtn && !inboxBtn.disabled && inboxDialog) {
+          const card = inboxBtn.closest(".card");
+          pendingInbox = {
+            btn: inboxBtn,
+            card: card,
+            portal: inboxBtn.dataset.portal || "",
+            pid: inboxBtn.dataset.pid || "",
+          };
+          if (inboxTitle) inboxTitle.textContent = cardTitleOf(card);
+          showInboxError("");
+          if (inboxConfirm) inboxConfirm.disabled = false;
+          inboxDialog.showModal();
           return;
         }
         const btn = event.target.closest(".btn-delete");
@@ -1399,6 +1463,55 @@
       if (relevantDialog) {
         relevantDialog.addEventListener("click", (event) => {
           if (event.target === relevantDialog) relevantDialog.close();
+        });
+      }
+
+      if (inboxConfirm) {
+        inboxConfirm.addEventListener("click", () => {
+          if (!pendingInbox) return;
+          const auth = noticeSecret();
+          if (auth.error) {
+            showInboxError(auth.error);
+            return;
+          }
+          const btn = pendingInbox.btn;
+          const card = pendingInbox.card;
+          inboxConfirm.disabled = true;
+          btn.disabled = true;
+          fetch("/notice/inbox", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              portal: pendingInbox.portal,
+              pid: pendingInbox.pid,
+              secret: auth.secret,
+            }),
+          })
+            .then(async (r) => {
+              const data = await r.json().catch(() => ({}));
+              if (!r.ok) {
+                btn.disabled = false;
+                inboxConfirm.disabled = false;
+                showInboxError(data.error || "Zurücklegen fehlgeschlagen.");
+                return;
+              }
+              pendingInbox = null;
+              closeInboxDialog();
+              bumpRelevantChip(-1);
+              dropCard(card);
+            })
+            .catch(() => {
+              btn.disabled = false;
+              inboxConfirm.disabled = false;
+              showInboxError("Zurücklegen fehlgeschlagen (Netzwerk).");
+            });
+        });
+      }
+      if (inboxCancel) inboxCancel.addEventListener("click", closeInboxDialog);
+      if (inboxClose) inboxClose.addEventListener("click", closeInboxDialog);
+      if (inboxDialog) {
+        inboxDialog.addEventListener("click", (event) => {
+          if (event.target === inboxDialog) inboxDialog.close();
         });
       }
 

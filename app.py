@@ -321,6 +321,22 @@ def mark_relevant():
     return jsonify(ok=True)
 
 
+@app.route("/notice/inbox", methods=["POST"])
+def mark_inbox():
+    parsed, err = _notice_ids()
+    if err:
+        return err
+    _payload, portal, pid = parsed
+    store = Store()
+    try:
+        moved = store.mark_inbox(portal, pid)
+    finally:
+        store.close()
+    if not moved:
+        return jsonify(ok=False, error="Eintrag nicht gefunden oder schon in der Liste."), 404
+    return jsonify(ok=True)
+
+
 def main() -> None:
     host = os.environ.get("HOST", "127.0.0.1")
     port = int(os.environ.get("PORT", "8000"))

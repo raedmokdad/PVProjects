@@ -322,6 +322,25 @@ class AppRelevantTests(unittest.TestCase):
         self.assertIn("Relevante Anzeigen", html)
         self.assertIn("PV-Anlage", html)
         self.assertNotIn('class="btn-relevant"', html)
+        self.assertIn('class="btn-inbox"', html)
+
+    def test_mark_inbox_moves_back(self):
+        from store.db import Store
+
+        self._insert()
+        self.client.post(
+            "/notice/relevant",
+            json={"secret": "test-secret", "portal": "berlin", "pid": "abc"},
+        )
+        res = self.client.post(
+            "/notice/inbox",
+            json={"secret": "test-secret", "portal": "berlin", "pid": "abc"},
+        )
+        self.assertEqual(res.status_code, 200)
+        store = Store()
+        self.assertEqual(len(store.relevant_unique()), 0)
+        self.assertEqual(len(store.matches()), 1)
+        store.close()
 
     def test_inbox_has_relevant_button(self):
         res = self.client.get("/")
