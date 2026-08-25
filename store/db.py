@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS notices (
     capacity_kwp REAL,
     completion_on TEXT,
     value_eur REAL,
+    bucket TEXT NOT NULL DEFAULT 'inbox',
     PRIMARY KEY (portal, pid)
 );
 
@@ -89,6 +90,8 @@ class Store:
             self.conn.execute("ALTER TABLE notices ADD COLUMN completion_on TEXT")
         if "value_eur" not in cols:
             self.conn.execute("ALTER TABLE notices ADD COLUMN value_eur REAL")
+        if "bucket" not in cols:
+            self.conn.execute("ALTER TABLE notices ADD COLUMN bucket TEXT NOT NULL DEFAULT 'inbox'")
         self.conn.commit()
 
     def upsert_notice(self, notice: Notice, run_date: str) -> None:
@@ -169,25 +172,15 @@ class Store:
         )
         self.conn.commit()
 
-    def matches(self, published_on: str | None = None) -> list[sqlite3.Row]:
+    def matches(self, published_on: str | None = None, bucket: str = "inbox") -> list[sqlite3.Row]:
+        where = ["is_match=1", "COALESCE(bucket, 'inbox')=?"]
+        params: list[str] = [bucket]
         if published_on:
-            cur = self.conn.execute(
-                """
-                SELECT * FROM notices
-                WHERE is_match=1 AND published_on=?
-                ORDER BY category, title
-                """,
-                (published_on,),
-            )
-        else:
-            cur = self.conn.execute(
-                """
-                SELECT * FROM notices
-                WHERE is_match=1
-                ORDER BY published_on DESC, category, title
-                """
-            )
-        return list(cur.fetchall())
+            where.append("published_on=?")
+            params.append(published_on)
+        order = "category, title" if published_on else "published_on DESC, category, title"
+        sql = f"SELECT * FROM notices WHERE {' AND '.join(where)} ORDER BY {order}"
+        return list(self.conn.execute(sql, params).fetchall())
 
     def last_run(self) -> sqlite3.Row | None:
         cur = self.conn.execute("SELECT * FROM runs ORDER BY id DESC LIMIT 1")
@@ -200,6 +193,27 @@ class Store:
         )
         self.conn.commit()
         return cur.rowcount > 0
+
+    def mark_relevant(self, portal: str, pid: str) -> bool:
+        cur = self.conn.execute(
+            """
+            UPDATE notices SET bucket='relevant'
+            WHERE portal=? AND pid=? AND COALESCE(bucket, 'inbox')='inbox'
+            """,
+            (portal, pid),
+        )
+        self.conn.commit()
+        return cur.rowcount > 0
+
+    def relevant_unique(self) -> list[sqlite3.Row]:
+        cur = self.conn.execute(
+            """
+            SELECT * FROM notices
+            WHERE COALESCE(bucket, 'inbox')='relevant'
+            ORDER BY published_on DESC, category, title
+            """
+        )
+        return dedupe_notice_rows(list(cur.fetchall()))
 
     def close(self) -> None:
         self.conn.close()

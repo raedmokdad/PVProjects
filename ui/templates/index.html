@@ -183,6 +183,12 @@
       border-color: #b91c1c;
     }
     .btn-danger:hover:not(:disabled) { background: #991b1b; border-color: #991b1b; }
+    .btn-relevant-confirm {
+      color: #fff;
+      background: var(--pv);
+      border-color: var(--pv);
+    }
+    .btn-relevant-confirm:hover:not(:disabled) { background: #0b5f58; border-color: #0b5f58; }
     .portal-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
     .portal-list a {
       display: block;
@@ -522,6 +528,20 @@
     }
     .btn-delete:hover { background: #fef2f2; }
     .btn-delete:disabled { opacity: .6; cursor: wait; }
+    .btn-relevant {
+      font: inherit;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--pv);
+      background: #fff;
+      border: 1px solid var(--pv);
+      border-radius: var(--radius);
+      padding: 7px 16px;
+      cursor: pointer;
+      text-align: center;
+    }
+    .btn-relevant:hover { background: #ecfdf5; }
+    .btn-relevant:disabled { opacity: .6; cursor: wait; }
 
     .empty {
       color: var(--muted);
@@ -625,7 +645,7 @@
           Noch kein Lauf gestartet
         {% endif %}
       </span>
-      <span class="status-count" id="filter-count">{{ total }} Ausschreibungen gefunden</span>
+      <span class="status-count" id="filter-count">{{ total }} {{ count_noun }}</span>
       <div class="status-actions">
         <div class="run-bar">
           <input type="date" id="run-date" autocomplete="off" title="Stichtag (leer = gestern)">
@@ -669,6 +689,22 @@
       <div class="dialog-actions">
         <button type="button" class="btn btn-ghost" id="delete-cancel" autofocus>Abbrechen</button>
         <button type="button" class="btn btn-danger" id="delete-confirm">Löschen</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="relevant-dialog">
+    <div class="dialog-head">
+      <h2>Als relevant merken?</h2>
+      <button type="button" class="dialog-close" id="relevant-close" aria-label="Schließen">&times;</button>
+    </div>
+    <div class="dialog-body">
+      <p>Diese Ausschreibung in die Liste der relevanten Anzeigen übernehmen und hier entfernen?</p>
+      <p class="dialog-title-preview" id="relevant-title"></p>
+      <p class="dialog-error" id="relevant-error" hidden></p>
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-ghost" id="relevant-cancel" autofocus>Abbrechen</button>
+        <button type="button" class="btn btn-relevant-confirm" id="relevant-confirm">OK</button>
       </div>
     </div>
   </dialog>
@@ -820,7 +856,7 @@
 
     <main>
       <div class="results-head">
-        <h2 id="results-count">{{ total }} Ausschreibungen gefunden</h2>
+        <h2 id="results-count" data-noun="{{ count_noun }}">{{ total }} {{ count_noun }}</h2>
         <label class="page-size-label">Pro Seite
           <select id="page-size">
             <option value="10" selected>10</option>
@@ -845,13 +881,18 @@
             <option value="value-asc">Volumen, kleinstes zuerst</option>
           </select>
         </label>
-        <a class="chip {{ 'is-current' if not show_all else '' }}" href="/">Letzter Stichtag</a>
-        <a class="chip {{ 'is-current' if show_all else '' }}" href="/alle">Alle gespeicherten Treffer</a>
+        <a class="chip {{ 'is-current' if view == 'latest' else '' }}" href="/">Letzter Stichtag</a>
+        <a class="chip {{ 'is-current' if view == 'all' else '' }}" href="/alle">Alle gespeicherten Treffer</a>
+        <a class="chip {{ 'is-current' if view == 'relevant' else '' }}" href="/relevant" data-count="{{ relevant_count }}">Relevante Anzeigen{% if relevant_count %} ({{ relevant_count }}){% endif %}</a>
         <span id="active-chips" style="display: contents;"></span>
       </div>
 
       {% if not rows %}
-        <p class="empty">Keine Treffer. Nach einem Lauf erscheinen sie hier und in <code>data/exports/aktuell.xlsx</code>.</p>
+        {% if view == 'relevant' %}
+          <p class="empty">Noch keine relevanten Anzeigen. Übernehmen Sie einen Treffer mit „Relevant“.</p>
+        {% else %}
+          <p class="empty">Keine Treffer. Nach einem Lauf erscheinen sie hier und in <code>data/exports/aktuell.xlsx</code>.</p>
+        {% endif %}
       {% endif %}
 
       <nav class="pager" id="pager-top" hidden>
@@ -919,6 +960,11 @@
               <span class="text">{{ row['excerpt'] or 'Keine Beschreibung im Portal hinterlegt.' }}</span>
             </p>
             <div class="card-actions">
+              {% if view != 'relevant' %}
+              <button type="button" class="btn-relevant"
+                      data-portal="{{ row['portal'] or '' }}"
+                      data-pid="{{ row['pid'] or '' }}">Relevant</button>
+              {% endif %}
               <button type="button" class="btn-delete"
                       data-portal="{{ row['portal'] or '' }}"
                       data-pid="{{ row['pid'] or '' }}">Löschen</button>
@@ -1122,7 +1168,12 @@
           results.appendChild(card);
         });
 
-        const text = matched.length + (matched.length === 1 ? " Ausschreibung" : " Ausschreibungen") + " gefunden";
+        let text;
+        if (headEl && headEl.dataset.noun === "relevante Anzeigen") {
+          text = matched.length === 1 ? "1 relevante Anzeige" : matched.length + " relevante Anzeigen";
+        } else {
+          text = matched.length + (matched.length === 1 ? " Ausschreibung" : " Ausschreibungen") + " gefunden";
+        }
         headEl.textContent = text;
         countEl.textContent = matched.length === cards.length ? text : text + " (von " + cards.length + ")";
         renderChips(s);
@@ -1167,33 +1218,88 @@
       const deleteConfirm = document.getElementById("delete-confirm");
       const deleteCancel = document.getElementById("delete-cancel");
       const deleteClose = document.getElementById("delete-close");
+      const relevantDialog = document.getElementById("relevant-dialog");
+      const relevantTitle = document.getElementById("relevant-title");
+      const relevantError = document.getElementById("relevant-error");
+      const relevantConfirm = document.getElementById("relevant-confirm");
+      const relevantCancel = document.getElementById("relevant-cancel");
+      const relevantClose = document.getElementById("relevant-close");
       let pendingDelete = null;
+      let pendingRelevant = null;
 
+      function cardTitleOf(card) {
+        return (card && card.querySelector(".card-title")
+          ? card.querySelector(".card-title").textContent
+          : ""
+        ).replace(/\s+/g, " ").trim();
+      }
+      function noticeSecret() {
+        const bar = document.getElementById("run-bar");
+        const secretInput = document.getElementById("run-secret");
+        const needsSecret = bar && bar.dataset.secretRequired === "1";
+        const secret = secretInput ? secretInput.value.trim() : "";
+        if (needsSecret && !secret) {
+          return { error: "Bitte zuerst das Geheimnis (RUN_SECRET) oben eintragen." };
+        }
+        return { secret: secret };
+      }
+      function dropCard(card) {
+        if (!card) return;
+        const idx = cards.indexOf(card);
+        if (idx >= 0) cards.splice(idx, 1);
+        card.remove();
+        apply(false);
+      }
+      function bumpRelevantChip(delta) {
+        const chip = document.querySelector('a.chip[href="/relevant"]');
+        if (!chip) return;
+        const n = Math.max(0, (Number(chip.dataset.count) || 0) + delta);
+        chip.dataset.count = String(n);
+        chip.textContent = n ? ("Relevante Anzeigen (" + n + ")") : "Relevante Anzeigen";
+      }
       function showDeleteError(text) {
         if (!deleteError) return;
         deleteError.textContent = text || "";
         deleteError.hidden = !text;
       }
-
+      function showRelevantError(text) {
+        if (!relevantError) return;
+        relevantError.textContent = text || "";
+        relevantError.hidden = !text;
+      }
       function closeDeleteDialog() {
         if (deleteDialog && deleteDialog.open) deleteDialog.close();
       }
+      function closeRelevantDialog() {
+        if (relevantDialog && relevantDialog.open) relevantDialog.close();
+      }
 
       results.addEventListener("click", (event) => {
+        const relBtn = event.target.closest(".btn-relevant");
+        if (relBtn && !relBtn.disabled && relevantDialog) {
+          const card = relBtn.closest(".card");
+          pendingRelevant = {
+            btn: relBtn,
+            card: card,
+            portal: relBtn.dataset.portal || "",
+            pid: relBtn.dataset.pid || "",
+          };
+          if (relevantTitle) relevantTitle.textContent = cardTitleOf(card);
+          showRelevantError("");
+          if (relevantConfirm) relevantConfirm.disabled = false;
+          relevantDialog.showModal();
+          return;
+        }
         const btn = event.target.closest(".btn-delete");
         if (!btn || btn.disabled || !deleteDialog) return;
         const card = btn.closest(".card");
-        const title = (card && card.querySelector(".card-title")
-          ? card.querySelector(".card-title").textContent
-          : ""
-        ).replace(/\s+/g, " ").trim();
         pendingDelete = {
           btn: btn,
           card: card,
           portal: btn.dataset.portal || "",
           pid: btn.dataset.pid || "",
         };
-        if (deleteTitle) deleteTitle.textContent = title;
+        if (deleteTitle) deleteTitle.textContent = cardTitleOf(card);
         showDeleteError("");
         if (deleteConfirm) deleteConfirm.disabled = false;
         deleteDialog.showModal();
@@ -1202,12 +1308,9 @@
       if (deleteConfirm) {
         deleteConfirm.addEventListener("click", () => {
           if (!pendingDelete) return;
-          const bar = document.getElementById("run-bar");
-          const secretInput = document.getElementById("run-secret");
-          const needsSecret = bar && bar.dataset.secretRequired === "1";
-          const secret = secretInput ? secretInput.value.trim() : "";
-          if (needsSecret && !secret) {
-            showDeleteError("Bitte zuerst das Geheimnis (RUN_SECRET) oben eintragen.");
+          const auth = noticeSecret();
+          if (auth.error) {
+            showDeleteError(auth.error);
             return;
           }
           const btn = pendingDelete.btn;
@@ -1220,7 +1323,7 @@
             body: JSON.stringify({
               portal: pendingDelete.portal,
               pid: pendingDelete.pid,
-              secret: secret,
+              secret: auth.secret,
             }),
           })
             .then(async (r) => {
@@ -1233,12 +1336,7 @@
               }
               pendingDelete = null;
               closeDeleteDialog();
-              if (card) {
-                const idx = cards.indexOf(card);
-                if (idx >= 0) cards.splice(idx, 1);
-                card.remove();
-              }
-              apply(false);
+              dropCard(card);
             })
             .catch(() => {
               btn.disabled = false;
@@ -1252,6 +1350,55 @@
       if (deleteDialog) {
         deleteDialog.addEventListener("click", (event) => {
           if (event.target === deleteDialog) deleteDialog.close();
+        });
+      }
+
+      if (relevantConfirm) {
+        relevantConfirm.addEventListener("click", () => {
+          if (!pendingRelevant) return;
+          const auth = noticeSecret();
+          if (auth.error) {
+            showRelevantError(auth.error);
+            return;
+          }
+          const btn = pendingRelevant.btn;
+          const card = pendingRelevant.card;
+          relevantConfirm.disabled = true;
+          btn.disabled = true;
+          fetch("/notice/relevant", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              portal: pendingRelevant.portal,
+              pid: pendingRelevant.pid,
+              secret: auth.secret,
+            }),
+          })
+            .then(async (r) => {
+              const data = await r.json().catch(() => ({}));
+              if (!r.ok) {
+                btn.disabled = false;
+                relevantConfirm.disabled = false;
+                showRelevantError(data.error || "Übernehmen fehlgeschlagen.");
+                return;
+              }
+              pendingRelevant = null;
+              closeRelevantDialog();
+              bumpRelevantChip(1);
+              dropCard(card);
+            })
+            .catch(() => {
+              btn.disabled = false;
+              relevantConfirm.disabled = false;
+              showRelevantError("Übernehmen fehlgeschlagen (Netzwerk).");
+            });
+        });
+      }
+      if (relevantCancel) relevantCancel.addEventListener("click", closeRelevantDialog);
+      if (relevantClose) relevantClose.addEventListener("click", closeRelevantDialog);
+      if (relevantDialog) {
+        relevantDialog.addEventListener("click", (event) => {
+          if (event.target === relevantDialog) relevantDialog.close();
         });
       }
 

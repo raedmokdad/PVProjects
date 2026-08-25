@@ -128,18 +128,29 @@ def category_counts(rows: list[dict]) -> dict[str, int]:
     return counts
 
 
-def page_context(rows: list[dict], last, run_date=None, show_all: bool = False) -> dict:
+def page_context(
+    rows: list[dict],
+    last,
+    run_date=None,
+    show_all: bool = False,
+    view: str = "latest",
+    relevant_count: int = 0,
+) -> dict:
     area_min, area_max = numeric_bounds(rows, "area_m2")
     kwp_min, kwp_max = numeric_bounds(rows, "capacity_kwp")
     pub_min, pub_max = date_bounds(rows, "published_on")
     deadline_min, deadline_max = date_bounds(rows, "deadline")
     end_min, end_max = date_bounds(rows, "completion_on")
     cats = category_counts(rows)
+    count_noun = "relevante Anzeigen" if view == "relevant" else "Ausschreibungen gefunden"
     return {
         "rows": rows,
         "last": last,
         "run_date": run_date,
         "show_all": show_all,
+        "view": view,
+        "relevant_count": relevant_count,
+        "count_noun": count_noun,
         "area_min": fmt_bound(area_min),
         "area_max": fmt_bound(area_max),
         "kwp_min": fmt_bound(kwp_min),
@@ -165,21 +176,49 @@ def page_context(rows: list[dict], last, run_date=None, show_all: bool = False) 
     }
 
 
+def _render_list(view: str, show_all: bool = False):
+    store = Store()
+    try:
+        last = store.last_run()
+        last = dict(last) if last else None
+        relevant_count = len(store.relevant_unique())
+        if view == "relevant":
+            rows = enrich_rows(store.relevant_unique())
+            run_date = None
+        elif show_all:
+            rows = enrich_rows(store.matches_unique())
+            run_date = None
+        else:
+            run_date = last["run_date"] if last else None
+            rows = enrich_rows(store.matches_unique(run_date) if run_date else [])
+    finally:
+        store.close()
+    return render_template(
+        "index.html",
+        **page_context(
+            rows,
+            last,
+            run_date=run_date,
+            show_all=show_all,
+            view=view,
+            relevant_count=relevant_count,
+        ),
+    )
+
+
 @app.route("/")
 def index():
-    store = Store()
-    last = store.last_run()
-    run_date = last["run_date"] if last else None
-    rows = enrich_rows(store.matches_unique(run_date) if run_date else [])
-    return render_template("index.html", **page_context(rows, last, run_date=run_date, show_all=False))
+    return _render_list("latest")
 
 
 @app.route("/alle")
 def alle():
-    store = Store()
-    last = store.last_run()
-    rows = enrich_rows(store.matches_unique())
-    return render_template("index.html", **page_context(rows, last, show_all=True))
+    return _render_list("all", show_all=True)
+
+
+@app.route("/relevant")
+def relevant():
+    return _render_list("relevant")
 
 
 MAX_BACKFILL_DAYS = 60
@@ -238,16 +277,24 @@ def start_run():
     return jsonify(ok=True, message=f"Suche gestartet (Stichtag {day.isoformat()})."), 202
 
 
-@app.route("/notice", methods=["DELETE"])
-def delete_notice():
+def _notice_ids():
     payload = request.get_json(silent=True) or {}
     secret = payload.get("secret") or request.form.get("secret") or request.headers.get("X-Run-Secret")
     if not secret_ok(secret):
-        return jsonify(ok=False, error="Geheimnis falsch oder fehlt."), 403
+        return None, (jsonify(ok=False, error="Geheimnis falsch oder fehlt."), 403)
     portal = str(payload.get("portal") or request.form.get("portal") or "").strip()
     pid = str(payload.get("pid") or request.form.get("pid") or "").strip()
     if not portal or not pid:
-        return jsonify(ok=False, error="Portal und ID fehlen."), 400
+        return None, (jsonify(ok=False, error="Portal und ID fehlen."), 400)
+    return (payload, portal, pid), None
+
+
+@app.route("/notice", methods=["DELETE"])
+def delete_notice():
+    parsed, err = _notice_ids()
+    if err:
+        return err
+    _payload, portal, pid = parsed
     store = Store()
     try:
         deleted = store.delete_notice(portal, pid)
@@ -255,6 +302,22 @@ def delete_notice():
         store.close()
     if not deleted:
         return jsonify(ok=False, error="Eintrag nicht gefunden."), 404
+    return jsonify(ok=True)
+
+
+@app.route("/notice/relevant", methods=["POST"])
+def mark_relevant():
+    parsed, err = _notice_ids()
+    if err:
+        return err
+    _payload, portal, pid = parsed
+    store = Store()
+    try:
+        moved = store.mark_relevant(portal, pid)
+    finally:
+        store.close()
+    if not moved:
+        return jsonify(ok=False, error="Eintrag nicht gefunden oder schon relevant."), 404
     return jsonify(ok=True)
 
 

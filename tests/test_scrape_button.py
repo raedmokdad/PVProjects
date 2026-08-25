@@ -227,5 +227,107 @@ class AppDeleteTests(unittest.TestCase):
         store.close()
 
 
+class AppRelevantTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.env = patch.dict(
+            os.environ,
+            {"DATA_DIR": self.tmp.name, "RUN_SECRET": "test-secret", "RAILWAY_ENVIRONMENT": "production"},
+            clear=False,
+        )
+        self.env.start()
+        self.addCleanup(self.env.stop)
+        import app as app_mod
+
+        self.client = app_mod.app.test_client()
+
+    def _insert(self, pid="abc"):
+        from portals.base import Notice
+        from store.db import Store
+
+        store = Store()
+        store.upsert_notice(
+            Notice(
+                portal="berlin",
+                pid=pid,
+                title="PV-Anlage",
+                published_on="2026-08-01",
+                is_match=True,
+                category="PV",
+            ),
+            "2026-08-01",
+        )
+        store.close()
+
+    def test_mark_requires_secret(self):
+        res = self.client.post("/notice/relevant", json={"portal": "berlin", "pid": "1"})
+        self.assertEqual(res.status_code, 403)
+
+    def test_mark_unknown(self):
+        res = self.client.post(
+            "/notice/relevant",
+            json={"secret": "test-secret", "portal": "berlin", "pid": "missing"},
+        )
+        self.assertEqual(res.status_code, 404)
+
+    def test_mark_relevant_moves_notice(self):
+        from store.db import Store
+
+        self._insert()
+        res = self.client.post(
+            "/notice/relevant",
+            json={"secret": "test-secret", "portal": "berlin", "pid": "abc"},
+        )
+        self.assertEqual(res.status_code, 200)
+        store = Store()
+        self.assertEqual(len(store.matches()), 0)
+        self.assertEqual(len(store.relevant_unique()), 1)
+        self.assertEqual(store.relevant_unique()[0]["pid"], "abc")
+        store.close()
+
+    def test_upsert_keeps_relevant(self):
+        from portals.base import Notice
+        from store.db import Store
+
+        self._insert()
+        store = Store()
+        self.assertTrue(store.mark_relevant("berlin", "abc"))
+        store.upsert_notice(
+            Notice(
+                portal="berlin",
+                pid="abc",
+                title="PV-Anlage neu",
+                published_on="2026-08-01",
+                is_match=True,
+                category="PV",
+            ),
+            "2026-08-02",
+        )
+        self.assertEqual(len(store.matches()), 0)
+        rows = store.relevant_unique()
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["title"], "PV-Anlage neu")
+        store.close()
+
+    def test_relevant_page(self):
+        self._insert()
+        self.client.post(
+            "/notice/relevant",
+            json={"secret": "test-secret", "portal": "berlin", "pid": "abc"},
+        )
+        res = self.client.get("/relevant")
+        self.assertEqual(res.status_code, 200)
+        html = res.get_data(as_text=True)
+        self.assertIn("Relevante Anzeigen", html)
+        self.assertIn("PV-Anlage", html)
+        self.assertNotIn('class="btn-relevant"', html)
+
+    def test_inbox_has_relevant_button(self):
+        res = self.client.get("/")
+        self.assertEqual(res.status_code, 200)
+        self.assertIn('href="/relevant"', res.get_data(as_text=True))
+
+
 if __name__ == "__main__":
     unittest.main()
