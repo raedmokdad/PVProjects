@@ -18,7 +18,7 @@ from filter.pv_storage import classify, is_planning
 from jobs import scheduler
 from jobs.daily import run as run_daily, yesterday
 from jobs.scrape_state import heal_stale_run, is_running, read_status, secret_configured, secret_ok
-from portals import portal_labels
+from portals import portal_catalog, portal_home, portal_label
 from portals.click import notice_click_url
 from store.db import Store
 
@@ -48,6 +48,8 @@ def enrich_rows(rows) -> list[dict]:
         item["published_label"] = format_date_de(item.get("published_on"))
         item["deadline_label"] = format_date_de(item.get("deadline"))
         item["completion_label"] = format_date_de(item.get("completion_on"))
+        item["portal_label"] = portal_label(item.get("portal") or "")
+        item["portal_home"] = portal_home(item.get("portal") or "")
         out.append(item)
     return out
 
@@ -150,7 +152,7 @@ def page_context(rows: list[dict], last, run_date=None, show_all: bool = False) 
         "n_planung": cats["Planung"],
         "run_secret_required": secret_configured(),
         "scrape": heal_stale_run(),
-        "portals": portal_labels(),
+        "portals": portal_catalog(),
     }
 
 

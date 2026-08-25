@@ -49,34 +49,72 @@ PORTALS = {
 DEFAULT_PORTALS = list(PORTALS)
 
 PORTAL_LABELS = {
-    "oeffentlichevergabe": "Bund — Bekanntmachungsservice",
-    "dtvp": "DTVP — Kommunen und Stadtwerke",
-    "evergabe_nrw": "NRW — Landesmarktplatz",
-    "vergabe_ruhr": "NRW — Ruhr-Kommunen",
-    "vmp_rheinland": "NRW — Rheinland-Kommunen",
-    "vergabe_westfalen": "NRW — Westfalen-Kommunen",
-    "evergabe_blb": "NRW — BLB",
-    "vergabe_rlp": "Rheinland-Pfalz",
-    "vergabe_brandenburg": "Brandenburg",
-    "evergabe_mv": "Mecklenburg-Vorpommern",
-    "vergabe_niedersachsen": "Niedersachsen",
-    "berlin": "Berlin",
-    "hessen": "Hessen",
-    "landbw": "Baden-Württemberg",
-    "sachsen": "Sachsen",
-    "bremen": "Bremen",
-    "evergabe_online": "Bund — e-Vergabe",
-    "aumass": "Bayern — Kommunen",
-    "sachsen_anhalt": "Sachsen-Anhalt",
-    "thueringen": "Thüringen",
-    "saarland": "Saarland",
-    "cosuno": "Cosuno — privat-gewerblicher Marktplatz",
+    "oeffentlichevergabe": "Bekanntmachungsservice Bund",
+    "dtvp": "DTVP",
+    "evergabe_nrw": "eVergabe.NRW",
+    "vergabe_ruhr": "Vergabemarktplatz Metropole Ruhr",
+    "vmp_rheinland": "VMP Rheinland",
+    "vergabe_westfalen": "Vergabe Westfalen",
+    "evergabe_blb": "eVergabe BLB NRW",
+    "vergabe_rlp": "Vergabemarktplatz Rheinland-Pfalz",
+    "vergabe_brandenburg": "Vergabemarktplatz Brandenburg",
+    "evergabe_mv": "eVergabe Mecklenburg-Vorpommern",
+    "vergabe_niedersachsen": "Vergabe Niedersachsen",
+    "berlin": "Vergabekooperation Berlin",
+    "hessen": "Vergabe Hessen",
+    "landbw": "Vergabemarktplatz Baden-Württemberg",
+    "sachsen": "eVergabe Sachsen",
+    "bremen": "Vergabe Bremen",
+    "evergabe_online": "e-Vergabe Bund",
+    "aumass": "AUMASs Bayern",
+    "sachsen_anhalt": "eVergabe Sachsen-Anhalt",
+    "thueringen": "eVergabe Thüringen",
+    "saarland": "Ausschreibungen Saarland",
+    "cosuno": "Cosuno Marktplatz",
+}
+
+# Startseite, wenn die Portal-Klasse keine öffentliche Suche als base hat.
+PORTAL_HOME = {
+    "cosuno": "https://www.cosuno.com/de/marketplace",
+    "oeffentlichevergabe": "https://www.oeffentlichevergabe.de",
 }
 
 
-def portal_labels(keys=None) -> list[str]:
+def _sort_label(label: str) -> str:
+    return (
+        (label or "")
+        .lower()
+        .replace("ä", "ae")
+        .replace("ö", "oe")
+        .replace("ü", "ue")
+        .replace("ß", "ss")
+    )
+
+
+def portal_label(key: str) -> str:
+    return PORTAL_LABELS.get(key, key)
+
+
+def portal_home(key: str) -> str:
+    if key in PORTAL_HOME:
+        return PORTAL_HOME[key]
+    cls = PORTALS.get(key)
+    return (getattr(cls, "base", "") or "").rstrip("/") if cls else ""
+
+
+def portal_catalog(keys=None) -> list[dict]:
+    """Portale mit Anzeigename und Start-URL, alphabetisch nach Name."""
     keys = keys if keys is not None else DEFAULT_PORTALS
-    return [PORTAL_LABELS.get(key, key) for key in keys]
+    entries = [
+        {"key": key, "label": portal_label(key), "url": portal_home(key)}
+        for key in keys
+    ]
+    entries.sort(key=lambda e: _sort_label(e["label"]))
+    return entries
+
+
+def portal_labels(keys=None) -> list[str]:
+    return [entry["label"] for entry in portal_catalog(keys)]
 
 ALIASES = {
     "nrw": "evergabe_nrw",

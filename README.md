@@ -81,7 +81,7 @@ Mit einem Firmenkonto für **Hamburg** oder **BayVeBe** kämen die letzten Lande
 | `vergabe_brandenburg` | `bb` | Brandenburg |
 | `evergabe_mv` | `mv` | Mecklenburg-Vorpommern |
 | `vergabe_niedersachsen` | `ni`, `nds` | Niedersachsen |
-| `berlin` | | Berlin |
+| `berlin` | | Vergabekooperation Berlin |
 | `hessen` | | Hessen |
 | `landbw` | `bw` | Baden-Württemberg |
 | `sachsen` | `sn` | Sachsen |

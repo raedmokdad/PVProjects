@@ -115,5 +115,23 @@ class GeoTest(unittest.TestCase):
         self.assertEqual(facets[-1]["name"], "Ohne Angabe")
 
 
+class PortalCatalogTest(unittest.TestCase):
+    def test_berlin_is_not_a_bare_city_name(self):
+        from portals import portal_home, portal_label
+
+        self.assertEqual(portal_label("berlin"), "Vergabekooperation Berlin")
+        self.assertEqual(portal_home("berlin"), "https://vergabekooperation.berlin")
+
+    def test_catalog_is_alphabetical_and_linked(self):
+        from portals import portal_catalog
+
+        catalog = portal_catalog()
+        labels = [e["label"] for e in catalog]
+        self.assertEqual(labels, sorted(labels, key=lambda s: s.lower().replace("ü", "ue").replace("ä", "ae").replace("ö", "oe")))
+        self.assertTrue(all(e["url"].startswith("http") for e in catalog))
+        self.assertIn("Vergabekooperation Berlin", labels)
+        self.assertNotIn("Berlin", labels)
+
+
 if __name__ == "__main__":
     unittest.main()
