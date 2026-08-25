@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS notices (
     area_m2 REAL,
     capacity_kwp REAL,
     completion_on TEXT,
+    value_eur REAL,
     PRIMARY KEY (portal, pid)
 );
 
@@ -86,6 +87,8 @@ class Store:
             self.conn.execute("ALTER TABLE notices ADD COLUMN capacity_kwp REAL")
         if "completion_on" not in cols:
             self.conn.execute("ALTER TABLE notices ADD COLUMN completion_on TEXT")
+        if "value_eur" not in cols:
+            self.conn.execute("ALTER TABLE notices ADD COLUMN value_eur REAL")
         self.conn.commit()
 
     def upsert_notice(self, notice: Notice, run_date: str) -> None:
@@ -95,8 +98,8 @@ class Store:
                 portal, pid, title, published_on, deadline, notice_type,
                 contracting_rule, organisation, city, nuts, source_platform, cpv, excerpt, project_url,
                 category, match_reason, is_match, run_date, fetched_at,
-                area_m2, capacity_kwp, completion_on
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                area_m2, capacity_kwp, completion_on, value_eur
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(portal, pid) DO UPDATE SET
                 title=excluded.title,
                 published_on=excluded.published_on,
@@ -117,7 +120,8 @@ class Store:
                 fetched_at=excluded.fetched_at,
                 area_m2=excluded.area_m2,
                 capacity_kwp=excluded.capacity_kwp,
-                completion_on=excluded.completion_on
+                completion_on=excluded.completion_on,
+                value_eur=excluded.value_eur
             """,
             (
                 notice.portal,
@@ -142,6 +146,7 @@ class Store:
                 notice.area_m2,
                 notice.capacity_kwp,
                 notice.completion_on,
+                notice.value_eur,
             ),
         )
         self.conn.commit()

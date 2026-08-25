@@ -26,6 +26,7 @@ class Notice:
     area_m2: float | None = None
     capacity_kwp: float | None = None
     completion_on: str = ""
+    value_eur: float | None = None
 
 
 @dataclass

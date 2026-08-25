@@ -12,8 +12,9 @@ ROOT = Path(__file__).resolve().parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from filter.facts import facts_from_row
-from filter.pv_storage import classify
+from filter.facts import facts_from_row, format_eur
+from filter.geo import bundesland_for, city_for, ort_facets
+from filter.pv_storage import classify, is_planning
 from jobs import scheduler
 from jobs.daily import run as run_daily, yesterday
 from jobs.scrape_state import heal_stale_run, is_running, read_status, secret_configured, secret_ok
@@ -37,8 +38,42 @@ def enrich_rows(rows) -> list[dict]:
         if cat:
             item["category"] = cat
             item["match_reason"] = reason
+        if is_planning(item.get("title") or "", item.get("excerpt") or "", item.get("cpv") or ""):
+            item["category"] = "Planung"
+        item["bundesland"] = bundesland_for(item)
+        item["city_label"] = city_for(item)
+        item["value_label"] = format_eur(item.get("value_eur"))
+        item["area_label"] = format_de(item.get("area_m2"), "m²")
+        item["kwp_label"] = format_de(item.get("capacity_kwp"), "kWp", decimals=1)
+        item["published_label"] = format_date_de(item.get("published_on"))
+        item["deadline_label"] = format_date_de(item.get("deadline"))
+        item["completion_label"] = format_date_de(item.get("completion_on"))
         out.append(item)
     return out
+
+
+def format_de(value, unit: str, decimals: int = 0) -> str:
+    """1200.0 -> '1.200 m²'. Leere Werte ergeben ''."""
+    if value in (None, ""):
+        return ""
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return ""
+    if decimals and number != int(number):
+        text = f"{number:,.{decimals}f}".replace(",", "#").replace(".", ",").replace("#", ".")
+    else:
+        text = f"{number:,.0f}".replace(",", ".")
+    return f"{text} {unit}".strip()
+
+
+def format_date_de(iso) -> str:
+    """'2026-08-21' -> '21.08.2026'."""
+    raw = str(iso or "").strip()[:10]
+    try:
+        return date.fromisoformat(raw).strftime("%d.%m.%Y")
+    except ValueError:
+        return ""
 
 
 def numeric_bounds(rows: list[dict], key: str) -> tuple[float | None, float | None]:
@@ -68,7 +103,7 @@ def city_options(rows: list[dict]) -> list[str]:
     seen: set[str] = set()
     out: list[str] = []
     for row in rows:
-        city = (row.get("city") or "").strip().split("\n")[0].strip()
+        city = (row.get("city_label") or row.get("city") or "").strip().split("\n")[0].strip()
         if city and city not in seen:
             seen.add(city)
             out.append(city)
@@ -76,7 +111,7 @@ def city_options(rows: list[dict]) -> list[str]:
 
 
 def category_counts(rows: list[dict]) -> dict[str, int]:
-    counts = {"PV": 0, "Speicher": 0, "PV+Speicher": 0}
+    counts = {"PV": 0, "Speicher": 0, "PV+Speicher": 0, "Planung": 0}
     for row in rows:
         key = row.get("category") or "PV"
         if key in counts:
@@ -107,9 +142,12 @@ def page_context(rows: list[dict], last, run_date=None, show_all: bool = False) 
         "end_min": end_min,
         "end_max": end_max,
         "cities": city_options(rows),
+        "ort_facets": ort_facets(rows),
+        "total": len(rows),
         "n_pv": cats["PV"],
         "n_speicher": cats["Speicher"],
         "n_both": cats["PV+Speicher"],
+        "n_planung": cats["Planung"],
         "run_secret_required": secret_configured(),
         "scrape": heal_stale_run(),
         "portals": portal_labels(),

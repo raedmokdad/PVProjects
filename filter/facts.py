@@ -40,6 +40,22 @@ COMPLETION_RE = re.compile(
     r".{0,120}?(\d{2}[./]\d{2}[./]\d{2,4})",
     re.IGNORECASE | re.DOTALL,
 )
+AMOUNT = r"(\d{1,3}(?:\.\d{3})+(?:,\d+)?|\d+(?:[.,]\d+)?)"
+# Betrag hinter dem Schlagwort: „Geschätzter Gesamtwert: 1.250.000,00 EUR“.
+VALUE_AFTER_RE = re.compile(
+    r"(?:gesch(?:ä|ae)tzter\s+(?:gesamt)?wert|auftragswert|auftragsvolumen|gesamtwert|"
+    r"verg(?:ü|ue)tung|honorar|kostensch(?:ä|ae)tzung|bauvolumen|"
+    r"wert\s+ohne\s+(?:mwst|umsatzsteuer))"
+    r"[^0-9]{0,60}?" + AMOUNT + r"\s*(?:€|eur\b|euro\b)",
+    re.IGNORECASE | re.DOTALL,
+)
+# Betrag vor dem Schlagwort: „1.250.000 € geschätzter Auftragswert“.
+VALUE_BEFORE_RE = re.compile(
+    AMOUNT + r"\s*(?:€|eur\b|euro\b)[^0-9]{0,40}?"
+    r"(?:gesch(?:ä|ae)tzter\s+(?:gesamt)?wert|auftragswert|auftragsvolumen|gesamtwert|"
+    r"verg(?:ü|ue)tung|honorar|kostensch(?:ä|ae)tzung|bauvolumen)",
+    re.IGNORECASE | re.DOTALL,
+)
 
 
 def parse_de_number(value: str) -> float | None:
@@ -48,6 +64,9 @@ def parse_de_number(value: str) -> float | None:
         return None
     if "," in raw:
         raw = raw.replace(".", "").replace(",", ".")
+    elif raw.count(".") > 1:
+        # Mehrere Punkte sind immer Tausenderzeichen: 1.100.000
+        raw = raw.replace(".", "")
     elif raw.count(".") == 1 and len(raw.split(".")[1]) == 3:
         raw = raw.replace(".", "")
     try:
@@ -62,11 +81,24 @@ def _latest_date(text: str) -> str:
     return max(dates) if dates else ""
 
 
+def extract_value_eur(text: str) -> float | None:
+    """Auftragswert/Vergütung in Euro. Bei mehreren Angaben der größte Betrag."""
+    blob = text or ""
+    found: list[float] = []
+    for pattern in (VALUE_AFTER_RE, VALUE_BEFORE_RE):
+        for match in pattern.finditer(blob):
+            amount = parse_de_number(match.group(1))
+            if amount is not None and amount > 0:
+                found.append(amount)
+    return max(found) if found else None
+
+
 @dataclass
 class Facts:
     area_m2: float | None = None
     capacity_kwp: float | None = None
     completion_on: str = ""
+    value_eur: float | None = None
 
 
 def extract_facts(*parts: str) -> Facts:
@@ -80,6 +112,7 @@ def extract_facts(*parts: str) -> Facts:
     kwps = [n for n in kwps if n is not None]
     if kwps:
         facts.capacity_kwp = max(kwps)
+    facts.value_eur = extract_value_eur(blob)
 
     begin_end = BEGIN_END_RE.search(blob)
     fertig_leistung = FERTIG_LEISTUNG_RE.search(blob)
@@ -111,6 +144,8 @@ def apply_facts(notice) -> None:
         notice.capacity_kwp = facts.capacity_kwp
     if facts.completion_on:
         notice.completion_on = facts.completion_on
+    if facts.value_eur is not None and notice.value_eur is None:
+        notice.value_eur = facts.value_eur
 
 
 def _as_float(value) -> float | None:
@@ -130,4 +165,15 @@ def facts_from_row(row: dict) -> dict:
         if row.get("capacity_kwp") not in (None, "")
         else extracted.capacity_kwp,
         "completion_on": (row.get("completion_on") or "") or extracted.completion_on,
+        "value_eur": _as_float(row.get("value_eur"))
+        if row.get("value_eur") not in (None, "")
+        else extracted.value_eur,
     }
+
+
+def format_eur(value) -> str:
+    """1250000.0 -> '1.250.000 €'. Leere Werte ergeben ''."""
+    amount = _as_float(value)
+    if amount is None:
+        return ""
+    return f"{amount:,.0f}".replace(",", ".") + " €"

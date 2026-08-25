@@ -93,6 +93,60 @@ def _to_iso_date(value: str) -> str:
     return value[:10]
 
 
+VALUE_KEYS = (
+    "estimatedvalue",
+    "estimatedoverallcontractamount",
+    "maximumvalue",
+    "estimatedtotalvalue",
+    "contractvalue",
+)
+CURRENCY_KEYS = ("currencyid", "currency", "currencycode")
+
+
+def _money_amount(node) -> float | None:
+    """{'amount': 1250000, 'currencyId': 'EUR'} -> 1250000.0. Fremdwährungen werden übergangen."""
+    if isinstance(node, (int, float)) and not isinstance(node, bool):
+        return float(node)
+    if not isinstance(node, dict):
+        return None
+    raw = node.get("amount", node.get("value"))
+    if isinstance(raw, dict):
+        raw = raw.get("amount", raw.get("value"))
+    if isinstance(raw, bool) or not isinstance(raw, (int, float, str)):
+        return None
+    currency = ""
+    for key, val in node.items():
+        if key.lower() in CURRENCY_KEYS:
+            currency = str(val.get("value") if isinstance(val, dict) else val or "").upper()
+            break
+    if currency and currency != "EUR":
+        return None
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        return None
+
+
+def value_from_json(data) -> float | None:
+    """Sucht den geschätzten Auftragswert irgendwo im eForms-JSON. Größter EUR-Betrag gewinnt."""
+    found: list[float] = []
+
+    def walk(node) -> None:
+        if isinstance(node, dict):
+            for key, val in node.items():
+                if key.lower() in VALUE_KEYS:
+                    amount = _money_amount(val)
+                    if amount is not None and amount > 0:
+                        found.append(amount)
+                walk(val)
+        elif isinstance(node, list):
+            for item in node:
+                walk(item)
+
+    walk(data)
+    return max(found) if found else None
+
+
 def union_by_notice_id(notices: list[Notice]) -> list[Notice]:
     by_id: dict[str, Notice] = {}
     for notice in notices:
@@ -192,6 +246,7 @@ class OeffentlichevergabePortal:
             notice.capacity_kwp = facts.capacity_kwp
         if facts.area_m2 is not None:
             notice.area_m2 = facts.area_m2
+        notice.value_eur = value_from_json(data) or facts.value_eur
         return notice
 
     def _search_clauses(self) -> list[dict]:

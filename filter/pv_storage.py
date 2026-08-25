@@ -64,6 +64,42 @@ def _keyword_hit(text: str, keywords: list[str]) -> str | None:
     return None
 
 
+PLANNING_KEYWORDS = (
+    "planungsleistung",
+    "objektplanung",
+    "fachplanung",
+    "generalplaner",
+    "generalplanung",
+    "tragwerksplanung",
+    "elektroplanung",
+    "vorplanung",
+    "entwurfsplanung",
+    "genehmigungsplanung",
+    "ausführungsplanung",
+    "ausfuehrungsplanung",
+    "ingenieurleistung",
+    "ingenieurdienstleistung",
+    "planungsbüro",
+    "planungsbuero",
+    "hoai",
+    "machbarkeitsstudie",
+    "konzeptstudie",
+    "potenzialanalyse",
+    "potentialanalyse",
+)
+# CPV 71 = Architektur-, Bau-, Ingenieur- und Inspektionsdienstleistungen.
+PLANNING_CPV_RE = re.compile(r"\b71\d{6}\b")
+
+
+def is_planning(title: str, detail_text: str, cpv_field: str = "") -> bool:
+    """Erkennt Planungs- und Ingenieurleistungen statt Bau- oder Lieferleistungen."""
+    blob = _normalize(" ".join(part for part in (title, detail_text) if part))
+    if any(kw in blob for kw in PLANNING_KEYWORDS):
+        return True
+    codes = _cpv_codes(title) + _cpv_codes(detail_text) + _cpv_codes(cpv_field)
+    return any(PLANNING_CPV_RE.fullmatch(code) for code in codes)
+
+
 def classify(title: str, detail_text: str, cpv_field: str = "", config: dict | None = None) -> tuple[str, str]:
     """Return (category, reason). Category is PV, Speicher, PV+Speicher or empty."""
     cfg = config or load_filter_config()
