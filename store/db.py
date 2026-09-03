@@ -46,6 +46,9 @@ CREATE TABLE IF NOT EXISTS notices (
     completion_on TEXT,
     value_eur REAL,
     bucket TEXT NOT NULL DEFAULT 'inbox',
+    start_on TEXT,
+    is_new_build INTEGER,
+    has_transformer INTEGER,
     PRIMARY KEY (portal, pid)
 );
 
@@ -92,6 +95,12 @@ class Store:
             self.conn.execute("ALTER TABLE notices ADD COLUMN value_eur REAL")
         if "bucket" not in cols:
             self.conn.execute("ALTER TABLE notices ADD COLUMN bucket TEXT NOT NULL DEFAULT 'inbox'")
+        if "start_on" not in cols:
+            self.conn.execute("ALTER TABLE notices ADD COLUMN start_on TEXT")
+        if "is_new_build" not in cols:
+            self.conn.execute("ALTER TABLE notices ADD COLUMN is_new_build INTEGER")
+        if "has_transformer" not in cols:
+            self.conn.execute("ALTER TABLE notices ADD COLUMN has_transformer INTEGER")
         self.conn.commit()
 
     def upsert_notice(self, notice: Notice, run_date: str) -> None:
@@ -101,8 +110,9 @@ class Store:
                 portal, pid, title, published_on, deadline, notice_type,
                 contracting_rule, organisation, city, nuts, source_platform, cpv, excerpt, project_url,
                 category, match_reason, is_match, run_date, fetched_at,
-                area_m2, capacity_kwp, completion_on, value_eur
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                area_m2, capacity_kwp, completion_on, value_eur,
+                start_on, is_new_build, has_transformer
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(portal, pid) DO UPDATE SET
                 title=excluded.title,
                 published_on=excluded.published_on,
@@ -124,7 +134,10 @@ class Store:
                 area_m2=excluded.area_m2,
                 capacity_kwp=excluded.capacity_kwp,
                 completion_on=excluded.completion_on,
-                value_eur=excluded.value_eur
+                value_eur=excluded.value_eur,
+                start_on=COALESCE(excluded.start_on, notices.start_on),
+                is_new_build=COALESCE(excluded.is_new_build, notices.is_new_build),
+                has_transformer=COALESCE(excluded.has_transformer, notices.has_transformer)
             """,
             (
                 notice.portal,
@@ -150,6 +163,9 @@ class Store:
                 notice.capacity_kwp,
                 notice.completion_on,
                 notice.value_eur,
+                notice.start_on or None,
+                (1 if notice.is_new_build else 0) if notice.is_new_build is not None else None,
+                (1 if notice.has_transformer else 0) if notice.has_transformer is not None else None,
             ),
         )
         self.conn.commit()

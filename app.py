@@ -12,6 +12,13 @@ ROOT = Path(__file__).resolve().parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+# Lokale .env-Datei laden (lokal nützlich; auf Railway kommen Variablen direkt aus dem Dashboard).
+try:
+    from dotenv import load_dotenv
+    load_dotenv(ROOT / ".env", override=False)
+except ImportError:
+    pass
+
 from filter.facts import facts_from_row, format_eur
 from filter.geo import bundesland_for, city_for, ort_facets
 from filter.pv_storage import classify, is_planning

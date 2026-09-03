@@ -11,6 +11,14 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+# .env lokal laden (lokal nützlich; auf Railway kommen Variablen direkt aus dem Dashboard).
+try:
+    from dotenv import load_dotenv
+    load_dotenv(ROOT / ".env", override=False)
+except ImportError:
+    pass
+
+from filter.ai_extract import ai_extract
 from filter.facts import apply_facts
 from filter.pv_storage import classify, load_filter_config
 from jobs.scrape_state import acquire_lock, iso_now, release_lock, touch_lock, write_status
@@ -79,6 +87,8 @@ def run_portal(portal, iso: str, cfg: dict, store: Store) -> tuple[int, int, int
         notice.match_reason = reason
         notice.is_match = bool(category)
         apply_facts(notice)
+        if notice.is_match:
+            ai_extract(notice)
         if notice.detail_text and len(notice.excerpt or "") < 1200:
             notice.excerpt = re.sub(r"\s+", " ", notice.detail_text).strip()[:2500]
         store.upsert_notice(notice, iso)

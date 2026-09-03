@@ -27,6 +27,9 @@ class Notice:
     capacity_kwp: float | None = None
     completion_on: str = ""
     value_eur: float | None = None
+    start_on: str = ""
+    is_new_build: bool | None = None
+    has_transformer: bool | None = None
 
 
 @dataclass
